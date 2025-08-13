@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Card Dealer PWA</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="controls">
+      <button id="btn-restart" class="btn">Restart</button>
+      <button id="btn-faster" class="btn">Faster (-1s)</button>
+      <button id="btn-slower" class="btn">Slower (+1s)</button>
+      <button id="btn-pause"  class="btn">Pause</button>
+    </div>
+    <div class="status">
+      <span id="speed-label">Speed: 5s / card</span>
+      <span id="remaining-label">Remaining: —</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="current-card" class="current-card" aria-live="polite">
+      <div class="placeholder">Cards will appear here</div>
+    </div>
+
+    <section class="dealt-section">
+      <h2>Dealt (left → right):</h2>
+      <div id="dealt-strip" class="dealt-strip" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="script.js" defer></script>
+  <script>
+    // Register the service worker (required for PWA on GitHub Pages)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>
