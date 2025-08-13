@@ -123,11 +123,11 @@ btnPause.addEventListener('click', () => {
 // Load cards.json
 async function loadDeckList(){
   try {
-    const res = await fetch('./cards/cards.json', { cache: 'no-store' });
+    const res = await fetch('./Cards/cards.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('cards.json not found');
     const files = await res.json();
     if (!Array.isArray(files)) throw new Error('cards.json must be an array');
-    return files.map(name => `./cards/${name}`);
+    return files.map(name => `./Cards/${name}`);
   } catch (err) {
     console.error('[cards] Error loading deck list:', err);
     return [];
