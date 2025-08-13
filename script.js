@@ -6,7 +6,7 @@
  * Dealt cards shown at bottom in order (left→right)
  */
 
-const DEFAULT_DELAY_MS = 5000; // 5s per card
+const DEFAULT_DELAY_MS = 3000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
 
 // UI elements
