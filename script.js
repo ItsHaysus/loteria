@@ -70,6 +70,8 @@ function loadPreferences(){
   } catch (e) {
     console.warn('Could not load preferences:', e);
   }
+
+  updateSpeechButton();
 }
 
 // Show card
@@ -433,4 +435,5 @@ function filterExistingImages(urls){
   currentCardEl.innerHTML = '<div class="placeholder">Press Start to begin</div>';
   dealtStrip.innerHTML = '';
   started = false;
+  updateSpeechButton();
 })();
