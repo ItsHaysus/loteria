@@ -144,8 +144,6 @@ function removeAccents(str){
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-let currentAudio = null;
-
 function supportsAudio(){
   return 'Audio' in window;
 }
@@ -351,9 +349,6 @@ btnSpeech.addEventListener('click', () => {
   updateSpeechButton();
   savePreferences();
 });
-
-restoreSavedVoicePreference();
-btnStart.disabled = false;
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
