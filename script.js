@@ -1,13 +1,14 @@
 /* Card Dealer PWA - Lotería Edition
  * Loads cards from /cards/cards.json (JPG filenames)
- * Controls: Restart, Faster(-1s), Slower(+1s, min 1s), Pause (toggle)
+ * Controls: Restart (R), Faster(-1s, <), Slower(+1s, >), Pause (Space)
  * Default speed: 5s per card
  * Random deals without repeats while cards remain
  * Dealt cards shown at bottom in order (left→right)
  */
 
-const DEFAULT_DELAY_MS = 3000; // 5s per card
+const DEFAULT_DELAY_MS = 5000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
+const STORAGE_KEY = 'loteria-preferences';
 
 // UI elements
 const btnRestart = document.getElementById('btn-restart');
@@ -30,8 +31,33 @@ let timerId = null;
 
 // Labels
 function updateLabels(){
-  speedLabel.textContent = `Speed: ${Math.round(delayMs/1000)}s / card`;
+  const speedSec = (delayMs/1000).toFixed(1);
+  speedLabel.textContent = `Speed: ${speedSec}s / card`;
   remainingLabel.textContent = `Remaining: ${remaining.length}`;
+}
+
+// Save preferences to localStorage
+function savePreferences(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ delayMs }));
+  } catch (e) {
+    console.warn('Could not save preferences:', e);
+  }
+}
+
+// Load preferences from localStorage
+function loadPreferences(){
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const { delayMs: savedDelay } = JSON.parse(saved);
+      if (savedDelay >= MIN_DELAY_MS) {
+        delayMs = savedDelay;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load preferences:', e);
+  }
 }
 
 // Show card
@@ -88,6 +114,7 @@ function resetGame(){
   stopTicker();
   paused = false;
   btnPause.textContent = 'Pause';
+  btnPause.setAttribute('aria-pressed', false);
 
   remaining = [...fullDeck];
   dealt = [];
@@ -104,58 +131,97 @@ btnRestart.addEventListener('click', resetGame);
 btnFaster.addEventListener('click', () => {
   delayMs = Math.max(MIN_DELAY_MS, delayMs - 1000);
   updateLabels();
+  savePreferences();
   startTicker();
 });
 
 btnSlower.addEventListener('click', () => {
   delayMs += 1000;
   updateLabels();
+  savePreferences();
   startTicker();
 });
 
 btnPause.addEventListener('click', () => {
   paused = !paused;
   btnPause.textContent = paused ? 'Resume' : 'Pause';
+  btnPause.setAttribute('aria-pressed', paused);
   if (paused) stopTicker();
   else startTicker();
 });
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.key.toLowerCase()) {
+    case 'r':
+      e.preventDefault();
+      resetGame();
+      break;
+    case '<':
+    case ',':
+      e.preventDefault();
+      btnFaster.click();
+      break;
+    case '>':
+    case '.':
+      e.preventDefault();
+      btnSlower.click();
+      break;
+    case ' ':
+      e.preventDefault();
+      btnPause.click();
+      break;
+  }
+});
+
+// Show loading indicator
+function showLoading(message = 'Loading deck...') {
+  currentCardEl.innerHTML = `<div class="placeholder">${message}</div>`;
+}
 
 // Load cards.json
 async function loadDeckList(){
   try {
     const res = await fetch('./Cards/cards.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('cards.json not found');
+    if (!res.ok) throw new Error(`HTTP ${res.status}: cards.json not found`);
     const files = await res.json();
     if (!Array.isArray(files)) throw new Error('cards.json must be an array');
     return files.map(name => `./Cards/${name}`);
   } catch (err) {
     console.error('[cards] Error loading deck list:', err);
+    showLoading('❌ Error loading deck list. Check console.');
     return [];
   }
 }
 
 // Verify images exist
 function filterExistingImages(urls){
-  return Promise.all(urls.map(src => new Promise(resolve => {
+  showLoading(`Loading ${urls.length} cards...`);
+  return Promise.all(urls.map((src, idx) => new Promise(resolve => {
     const img = new Image();
     img.onload = () => resolve(src);
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      console.warn(`[cards] Failed to load: ${src}`);
+      resolve(null);
+    };
     img.src = src + `?cb=${Date.now()}`;
   }))).then(results => results.filter(Boolean));
 }
 
 // Init
 (async function init(){
-  delayMs = DEFAULT_DELAY_MS;
+  loadPreferences();
   fullDeck = await loadDeckList();
   fullDeck = await filterExistingImages(fullDeck);
 
   if (fullDeck.length === 0) {
-    currentCardEl.innerHTML = '<div class="placeholder">No cards found in /cards/cards.json</div>';
+    currentCardEl.innerHTML = '<div class="placeholder">❌ No cards found in /Cards/cards.json</div>';
     updateLabels();
     return;
   }
   remaining = [...fullDeck];
   updateLabels();
+  currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
   startTicker();
 })();

@@ -13,14 +13,14 @@
 <body>
   <header class="topbar">
     <div class="controls">
-      <button id="btn-restart" class="btn">Restart</button>
-      <button id="btn-faster" class="btn">Faster (-1s)</button>
-      <button id="btn-slower" class="btn">Slower (+1s)</button>
-      <button id="btn-pause"  class="btn">Pause</button>
+      <button id="btn-restart" class="btn" title="Restart game (R)">Restart</button>
+      <button id="btn-faster" class="btn" title="Speed up (< or comma)">Faster (-1s)</button>
+      <button id="btn-slower" class="btn" title="Slow down (> or period)">Slower (+1s)</button>
+      <button id="btn-pause" class="btn" aria-pressed="false" title="Pause/Resume (Space)">Pause</button>
     </div>
     <div class="status">
-      <span id="speed-label">Speed: 5s / card</span>
-      <span id="remaining-label">Remaining: —</span>
+      <span id="speed-label" aria-live="polite">Speed: 5s / card</span>
+      <span id="remaining-label" aria-live="polite">Remaining: —</span>
     </div>
   </header>
 
