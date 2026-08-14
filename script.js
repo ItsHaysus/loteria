@@ -31,9 +31,9 @@ let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
 let speechEnabled = false;
-let speechVoice = null;
 let voiceUnlocked = false;
 let started = false;
+let currentAudio = null;
 
 // Labels
 function updateLabels(){
@@ -75,7 +75,7 @@ function loadPreferences(){
 }
 
 function restoreSavedVoicePreference(){
-  if (!supportsSpeech()) {
+  if (!supportsAudio()) {
     speechEnabled = false;
     updateSpeechButton();
     return;
@@ -93,12 +93,9 @@ function restoreSavedVoicePreference(){
     if (typeof parsed.speechEnabled === 'boolean') {
       speechEnabled = parsed.speechEnabled;
       updateSpeechButton();
-      if (speechEnabled) {
-        speechVoice = pickSpeechVoice();
-      }
     }
   } catch (e) {
-    console.warn('Could not restore speech preference:', e);
+    console.warn('Could not restore audio preference:', e);
     speechEnabled = false;
     updateSpeechButton();
   }
@@ -111,7 +108,7 @@ function showCurrentCard(src){
   img.alt = 'Current card';
   img.src = src;
   currentCardEl.appendChild(img);
-  speakCardName(src);
+  playCardAudio(src);
 }
 
 function getCardNameFromSrc(src){
@@ -124,118 +121,106 @@ function getCardNameFromSrc(src){
   }
 }
 
-function supportsSpeech(){
-  return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+function normalizeCardNameForAudio(cardName){
+  // Normalize: capitalize first letter after "El " or "La "
+  // This handles case sensitivity and matches audio filenames exactly
+  if (!cardName) return cardName;
+  
+  // Match "El " or "La " at the start (case-insensitive)
+  const match = cardName.match(/^(El|La)\s+(.+)$/i);
+  if (match) {
+    const prefix = match[1];
+    const rest = match[2];
+    // Capitalize first letter of the rest, keep accents intact
+    const capitalized = rest.charAt(0).toUpperCase() + rest.slice(1);
+    return `${prefix} ${capitalized}`;
+  }
+  
+  return cardName;
 }
 
-function pickSpeechVoice(){
-  if (!supportsSpeech()) return null;
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(voice => /es|spanish/i.test(voice.lang))
-    || voices.find(voice => /en|english/i.test(voice.lang))
-    || voices[0];
-  return preferred || null;
+function removeAccents(str){
+  // Remove diacritical marks for fallback matching
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+let currentAudio = null;
+
+function supportsAudio(){
+  return 'Audio' in window;
 }
 
 function updateSpeechButton(){
   if (!btnSpeech) return;
-  const isActive = speechEnabled && supportsSpeech();
+  const isActive = speechEnabled && supportsAudio();
   btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
   btnSpeech.classList.toggle('is-active', isActive);
   btnSpeech.setAttribute('aria-pressed', String(isActive));
 }
 
-function unlockVoiceForSafari(){
-  if (!supportsSpeech()) return;
-
-  const unlockUtterance = new SpeechSynthesisUtterance('');
-  unlockUtterance.lang = 'es-MX';
-  unlockUtterance.volume = 0;
-  unlockUtterance.rate = 1;
-  unlockUtterance.pitch = 1;
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.speechSynthesis.speak(unlockUtterance);
-  voiceUnlocked = true;
+function stopCurrentAudio(){
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
 }
 
-function speakIntroPhrase(){
-  if (!supportsSpeech()) return;
+function playStartAudio(){
+  if (!supportsAudio()) return;
 
-  const introUtterance = new SpeechSynthesisUtterance('Corre y se va con');
-  introUtterance.lang = 'es-MX';
-  introUtterance.rate = 0.9;
-  introUtterance.pitch = 1;
-  introUtterance.volume = 1;
-
-  if (speechVoice) {
-    introUtterance.voice = speechVoice;
-    introUtterance.lang = speechVoice.lang;
-  }
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    window.speechSynthesis.speak(introUtterance);
-  }, 80);
+  stopCurrentAudio();
+  currentAudio = new Audio('./audio/start.mp3');
+  currentAudio.volume = 1;
+  currentAudio.play().catch(err => {
+    console.warn('Could not play start audio:', err);
+  });
 }
 
-function speakTestPhrase(){
-  if (!speechEnabled || !supportsSpeech()) return;
+function playTestAudio(){
+  if (!speechEnabled || !supportsAudio()) return;
 
-  const testUtterance = new SpeechSynthesisUtterance('Prueba');
-  testUtterance.lang = 'es-MX';
-  testUtterance.rate = 0.9;
-  testUtterance.pitch = 1;
-  testUtterance.volume = 1;
-
-  if (speechVoice) {
-    testUtterance.voice = speechVoice;
-    testUtterance.lang = speechVoice.lang;
-  }
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    if (speechEnabled) {
-      window.speechSynthesis.speak(testUtterance);
-    }
-  }, 60);
+  stopCurrentAudio();
+  currentAudio = new Audio('./audio/Prueba.mp3');
+  currentAudio.volume = 1;
+  currentAudio.play().catch(err => {
+    console.warn('Could not play test audio:', err);
+  });
 }
 
-function speakCardName(src){
-  if (!speechEnabled || !supportsSpeech()) return;
+function playCardAudio(src){
+  if (!speechEnabled || !supportsAudio()) return;
 
-  if (!voiceUnlocked) {
-    unlockVoiceForSafari();
-  }
+  let cardName = getCardNameFromSrc(src);
+  if (!cardName) return;
 
-  const spokenText = getCardNameFromSrc(src);
-  if (!spokenText) return;
+  // Normalize to match audio filename format
+  cardName = normalizeCardNameForAudio(cardName);
 
-  const utterance = new SpeechSynthesisUtterance(spokenText);
-  utterance.lang = 'es-MX';
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-
-  if (!speechVoice) {
-    speechVoice = pickSpeechVoice();
-  }
-
-  if (speechVoice) {
-    utterance.voice = speechVoice;
-    utterance.lang = speechVoice.lang;
-  }
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    if (speechEnabled) {
-      window.speechSynthesis.speak(utterance);
-    }
-  }, 80);
+  stopCurrentAudio();
+  
+  // Try to play with accents first
+  const audioPath = `./audio/${cardName}.mp3`;
+  currentAudio = new Audio(audioPath);
+  currentAudio.volume = 1;
+  
+  currentAudio.addEventListener('error', () => {
+    // Fallback: try without accents if file not found
+    console.warn(`Audio not found at ${audioPath}, trying without accents...`);
+    const cardNameNoAccents = removeAccents(cardName);
+    const audioPathNoAccents = `./audio/${cardNameNoAccents}.mp3`;
+    
+    stopCurrentAudio();
+    currentAudio = new Audio(audioPathNoAccents);
+    currentAudio.volume = 1;
+    currentAudio.play().catch(err => {
+      console.warn(`Could not play audio for ${cardName} or ${cardNameNoAccents}:`, err);
+    });
+  }, { once: true });
+  
+  currentAudio.play().catch(err => {
+    console.warn(`Could not play audio for ${cardName}:`, err);
+  });
 }
 
 // Add to dealt strip
@@ -268,13 +253,8 @@ function beginGame(){
   }
 
   started = true;
-  if (speechEnabled && supportsSpeech()) {
-    if (typeof window.speechSynthesis.resume === 'function') {
-      window.speechSynthesis.resume();
-    }
-    speechVoice = pickSpeechVoice();
-    unlockVoiceForSafari();
-    speakIntroPhrase();
+  if (speechEnabled && supportsAudio()) {
+    playStartAudio();
   }
 
   remaining = [...fullDeck];
@@ -354,7 +334,7 @@ btnPause.addEventListener('click', () => {
 });
 
 btnSpeech.addEventListener('click', () => {
-  if (!supportsSpeech()) {
+  if (!supportsAudio()) {
     speechEnabled = false;
     updateSpeechButton();
     savePreferences();
@@ -363,27 +343,14 @@ btnSpeech.addEventListener('click', () => {
 
   speechEnabled = !speechEnabled;
   if (speechEnabled) {
-    if (typeof window.speechSynthesis.resume === 'function') {
-      window.speechSynthesis.resume();
-    }
-    speechVoice = pickSpeechVoice();
-    unlockVoiceForSafari();
-    speakTestPhrase();
+    playTestAudio();
   } else {
-    window.speechSynthesis.cancel();
-    voiceUnlocked = false;
+    stopCurrentAudio();
   }
 
   updateSpeechButton();
   savePreferences();
 });
-
-if (supportsSpeech()) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    speechVoice = pickSpeechVoice();
-  };
-  speechVoice = pickSpeechVoice();
-}
 
 restoreSavedVoicePreference();
 btnStart.disabled = false;
