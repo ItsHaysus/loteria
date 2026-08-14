@@ -15,6 +15,7 @@ const btnRestart = document.getElementById('btn-restart');
 const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
 const btnPause   = document.getElementById('btn-pause');
+const btnSpeech  = document.getElementById('btn-speech');
 
 const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
@@ -28,6 +29,8 @@ let dealt = [];        // dealt history
 let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
+let speechEnabled = false;
+let speechVoice = null;
 
 // Labels
 function updateLabels(){
@@ -67,6 +70,62 @@ function showCurrentCard(src){
   img.alt = 'Current card';
   img.src = src;
   currentCardEl.appendChild(img);
+  speakCardName(src);
+}
+
+function getCardNameFromSrc(src){
+  try {
+    const url = new URL(src, window.location.href);
+    const fileName = url.pathname.split('/').pop() || '';
+    return decodeURIComponent(fileName.replace(/\.[^/.]+$/, ''));
+  } catch (error) {
+    return '';
+  }
+}
+
+function supportsSpeech(){
+  return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+}
+
+function pickSpeechVoice(){
+  if (!supportsSpeech()) return null;
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(voice => /es|spanish/i.test(voice.lang))
+    || voices.find(voice => /en|english/i.test(voice.lang))
+    || voices[0];
+  return preferred || null;
+}
+
+function updateSpeechButton(){
+  if (!btnSpeech) return;
+  const isActive = speechEnabled && supportsSpeech();
+  btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
+  btnSpeech.classList.toggle('is-active', isActive);
+  btnSpeech.setAttribute('aria-pressed', String(isActive));
+}
+
+function speakCardName(src){
+  if (!speechEnabled || !supportsSpeech()) return;
+  const spokenText = getCardNameFromSrc(src);
+  if (!spokenText) return;
+
+  const utterance = new SpeechSynthesisUtterance(spokenText);
+  utterance.lang = 'es-MX';
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+
+  if (!speechVoice) {
+    speechVoice = pickSpeechVoice();
+  }
+
+  if (speechVoice) {
+    utterance.voice = speechVoice;
+    utterance.lang = speechVoice.lang;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
 // Add to dealt strip
@@ -149,6 +208,33 @@ btnPause.addEventListener('click', () => {
   if (paused) stopTicker();
   else startTicker();
 });
+
+btnSpeech.addEventListener('click', () => {
+  if (!supportsSpeech()) {
+    speechEnabled = false;
+    updateSpeechButton();
+    return;
+  }
+
+  speechEnabled = !speechEnabled;
+  if (speechEnabled) {
+    if (typeof window.speechSynthesis.resume === 'function') {
+      window.speechSynthesis.resume();
+    }
+    speechVoice = pickSpeechVoice();
+  } else {
+    window.speechSynthesis.cancel();
+  }
+
+  updateSpeechButton();
+});
+
+if (supportsSpeech()) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    speechVoice = pickSpeechVoice();
+  };
+  speechVoice = pickSpeechVoice();
+}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
