@@ -74,6 +74,36 @@ function loadPreferences(){
   updateSpeechButton();
 }
 
+function restoreSavedVoicePreference(){
+  if (!supportsSpeech()) {
+    speechEnabled = false;
+    updateSpeechButton();
+    return;
+  }
+
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    speechEnabled = false;
+    updateSpeechButton();
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    if (typeof parsed.speechEnabled === 'boolean') {
+      speechEnabled = parsed.speechEnabled;
+      updateSpeechButton();
+      if (speechEnabled) {
+        speechVoice = pickSpeechVoice();
+      }
+    }
+  } catch (e) {
+    console.warn('Could not restore speech preference:', e);
+    speechEnabled = false;
+    updateSpeechButton();
+  }
+}
+
 // Show card
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
@@ -355,8 +385,7 @@ if (supportsSpeech()) {
   speechVoice = pickSpeechVoice();
 }
 
-updateSpeechButton();
-
+restoreSavedVoicePreference();
 btnStart.disabled = false;
 
 // Keyboard shortcuts
@@ -421,6 +450,7 @@ function filterExistingImages(urls){
 // Init
 (async function init(){
   loadPreferences();
+  restoreSavedVoicePreference();
   fullDeck = await loadDeckList();
   fullDeck = await filterExistingImages(fullDeck);
 
