@@ -1,0 +1,44 @@
+{
+  "name": "Lotería Card Dealer",
+  "short_name": "Lotería",
+  "start_url": "/loteria/",
+  "scope": "/loteria/",
+  "display": "standalone",
+  "description": "A modern PWA for dealing Lotería cards with voice support and offline play",
+  "lang": "es",
+  "dir": "auto",
+  "theme_color": "#0f172a",
+  "background_color": "#0b1220",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/loteria/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/loteria/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "screenshots": [
+    {
+      "src": "/loteria/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "description": "Lotería card dealer application"
+    }
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Start Game",
+      "url": "/loteria/",
+      "description": "Launch a new Lotería game"
+    }
+  ]
+}
