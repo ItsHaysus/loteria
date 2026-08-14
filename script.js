@@ -145,15 +145,25 @@ function removeAccents(str){
 }
 
 function supportsAudio(){
-  return 'Audio' in window;
+  // More robust check for Audio API support
+  try {
+    new Audio();
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function updateSpeechButton(){
   if (!btnSpeech) return;
-  const isActive = speechEnabled && supportsAudio();
-  btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
-  btnSpeech.classList.toggle('is-active', isActive);
-  btnSpeech.setAttribute('aria-pressed', String(isActive));
+  try {
+    const isActive = speechEnabled && supportsAudio();
+    btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
+    btnSpeech.classList.toggle('is-active', isActive);
+    btnSpeech.setAttribute('aria-pressed', String(isActive));
+  } catch (e) {
+    console.warn('Error updating speech button:', e);
+  }
 }
 
 function stopCurrentAudio(){
@@ -284,7 +294,7 @@ function resetGame(){
   stopTicker();
   paused = false;
   btnPause.textContent = 'Pause';
-  btnPause.setAttribute('aria-pressed', false);
+  btnPause.setAttribute('aria-pressed', 'false');
 
   remaining = [...fullDeck];
   dealt = [];
@@ -326,29 +336,34 @@ btnSlower.addEventListener('click', () => {
 btnPause.addEventListener('click', () => {
   paused = !paused;
   btnPause.textContent = paused ? 'Resume' : 'Pause';
-  btnPause.setAttribute('aria-pressed', paused);
+  btnPause.setAttribute('aria-pressed', String(paused));
   if (paused) stopTicker();
   else startTicker();
 });
 
-btnSpeech.addEventListener('click', () => {
-  if (!supportsAudio()) {
-    speechEnabled = false;
+if (btnSpeech) {
+  btnSpeech.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!supportsAudio()) {
+      speechEnabled = false;
+      updateSpeechButton();
+      savePreferences();
+      return;
+    }
+
+    speechEnabled = !speechEnabled;
+    if (speechEnabled) {
+      playTestAudio();
+    } else {
+      stopCurrentAudio();
+    }
+
     updateSpeechButton();
     savePreferences();
-    return;
-  }
-
-  speechEnabled = !speechEnabled;
-  if (speechEnabled) {
-    playTestAudio();
-  } else {
-    stopCurrentAudio();
-  }
-
-  updateSpeechButton();
-  savePreferences();
-});
+  });
+}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
