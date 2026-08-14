@@ -108,16 +108,39 @@ function updateSpeechButton(){
 function unlockVoiceForSafari(){
   if (!supportsSpeech()) return;
 
-  const utterance = new SpeechSynthesisUtterance('');
-  utterance.lang = 'es-MX';
-  utterance.volume = 0;
-  utterance.rate = 1;
-  utterance.pitch = 1;
+  const unlockUtterance = new SpeechSynthesisUtterance('');
+  unlockUtterance.lang = 'es-MX';
+  unlockUtterance.volume = 0;
+  unlockUtterance.rate = 1;
+  unlockUtterance.pitch = 1;
 
   window.speechSynthesis.cancel();
   window.speechSynthesis.resume();
-  window.speechSynthesis.speak(utterance);
+  window.speechSynthesis.speak(unlockUtterance);
   voiceUnlocked = true;
+}
+
+function speakTestPhrase(){
+  if (!speechEnabled || !supportsSpeech()) return;
+
+  const testUtterance = new SpeechSynthesisUtterance('Prueba');
+  testUtterance.lang = 'es-MX';
+  testUtterance.rate = 0.9;
+  testUtterance.pitch = 1;
+  testUtterance.volume = 1;
+
+  if (speechVoice) {
+    testUtterance.voice = speechVoice;
+    testUtterance.lang = speechVoice.lang;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.resume();
+  window.setTimeout(() => {
+    if (speechEnabled) {
+      window.speechSynthesis.speak(testUtterance);
+    }
+  }, 60);
 }
 
 function speakCardName(src){
@@ -249,12 +272,7 @@ btnSpeech.addEventListener('click', () => {
     }
     speechVoice = pickSpeechVoice();
     unlockVoiceForSafari();
-    if (fullDeck.length > 0 && remaining.length > 0) {
-      const current = remaining[0] || fullDeck[0];
-      if (current) {
-        speakCardName(current);
-      }
-    }
+    speakTestPhrase();
   } else {
     window.speechSynthesis.cancel();
     voiceUnlocked = false;
