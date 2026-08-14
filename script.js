@@ -31,6 +31,7 @@ let paused = false;
 let timerId = null;
 let speechEnabled = false;
 let speechVoice = null;
+let voiceUnlocked = false;
 
 // Labels
 function updateLabels(){
@@ -104,8 +105,28 @@ function updateSpeechButton(){
   btnSpeech.setAttribute('aria-pressed', String(isActive));
 }
 
+function unlockVoiceForSafari(){
+  if (!supportsSpeech()) return;
+
+  const utterance = new SpeechSynthesisUtterance('');
+  utterance.lang = 'es-MX';
+  utterance.volume = 0;
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.resume();
+  window.speechSynthesis.speak(utterance);
+  voiceUnlocked = true;
+}
+
 function speakCardName(src){
   if (!speechEnabled || !supportsSpeech()) return;
+
+  if (!voiceUnlocked) {
+    unlockVoiceForSafari();
+  }
+
   const spokenText = getCardNameFromSrc(src);
   if (!spokenText) return;
 
@@ -125,7 +146,12 @@ function speakCardName(src){
   }
 
   window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  window.speechSynthesis.resume();
+  window.setTimeout(() => {
+    if (speechEnabled) {
+      window.speechSynthesis.speak(utterance);
+    }
+  }, 80);
 }
 
 // Add to dealt strip
@@ -222,8 +248,16 @@ btnSpeech.addEventListener('click', () => {
       window.speechSynthesis.resume();
     }
     speechVoice = pickSpeechVoice();
+    unlockVoiceForSafari();
+    if (fullDeck.length > 0 && remaining.length > 0) {
+      const current = remaining[0] || fullDeck[0];
+      if (current) {
+        speakCardName(current);
+      }
+    }
   } else {
     window.speechSynthesis.cancel();
+    voiceUnlocked = false;
   }
 
   updateSpeechButton();
