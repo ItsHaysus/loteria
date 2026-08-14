@@ -11,6 +11,7 @@ const MIN_DELAY_MS = 1000;     // 1s per card minimum
 const STORAGE_KEY = 'loteria-preferences';
 
 // UI elements
+const btnStart   = document.getElementById('btn-start');
 const btnRestart = document.getElementById('btn-restart');
 const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
@@ -32,6 +33,7 @@ let timerId = null;
 let speechEnabled = false;
 let speechVoice = null;
 let voiceUnlocked = false;
+let started = false;
 
 // Labels
 function updateLabels(){
@@ -43,7 +45,10 @@ function updateLabels(){
 // Save preferences to localStorage
 function savePreferences(){
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ delayMs }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      delayMs,
+      speechEnabled,
+    }));
   } catch (e) {
     console.warn('Could not save preferences:', e);
   }
@@ -54,9 +59,12 @@ function loadPreferences(){
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const { delayMs: savedDelay } = JSON.parse(saved);
+      const { delayMs: savedDelay, speechEnabled: savedSpeech } = JSON.parse(saved);
       if (savedDelay >= MIN_DELAY_MS) {
         delayMs = savedDelay;
+      }
+      if (typeof savedSpeech === 'boolean') {
+        speechEnabled = savedSpeech;
       }
     }
   } catch (e) {
@@ -118,6 +126,27 @@ function unlockVoiceForSafari(){
   window.speechSynthesis.resume();
   window.speechSynthesis.speak(unlockUtterance);
   voiceUnlocked = true;
+}
+
+function speakIntroPhrase(){
+  if (!supportsSpeech()) return;
+
+  const introUtterance = new SpeechSynthesisUtterance('Corre y se va con');
+  introUtterance.lang = 'es-MX';
+  introUtterance.rate = 0.9;
+  introUtterance.pitch = 1;
+  introUtterance.volume = 1;
+
+  if (speechVoice) {
+    introUtterance.voice = speechVoice;
+    introUtterance.lang = speechVoice.lang;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.resume();
+  window.setTimeout(() => {
+    window.speechSynthesis.speak(introUtterance);
+  }, 80);
 }
 
 function speakTestPhrase(){
@@ -201,6 +230,29 @@ function startTicker(){
   }
 }
 
+function beginGame(){
+  if (started) {
+    return;
+  }
+
+  started = true;
+  if (speechEnabled && supportsSpeech()) {
+    if (typeof window.speechSynthesis.resume === 'function') {
+      window.speechSynthesis.resume();
+    }
+    speechVoice = pickSpeechVoice();
+    unlockVoiceForSafari();
+    speakIntroPhrase();
+  }
+
+  remaining = [...fullDeck];
+  dealt = [];
+  currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
+  dealtStrip.innerHTML = '';
+  updateLabels();
+  startTicker();
+}
+
 // Deal card
 function dealOne(){
   if (paused || remaining.length === 0) return;
@@ -229,12 +281,23 @@ function resetGame(){
   currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
   dealtStrip.innerHTML = '';
   updateLabels();
-
-  startTicker();
 }
 
 // Controls
-btnRestart.addEventListener('click', resetGame);
+btnStart.addEventListener('click', () => {
+  beginGame();
+});
+
+btnRestart.addEventListener('click', () => {
+  started = false;
+  resetGame();
+  currentCardEl.innerHTML = '<div class="placeholder">Press Start to begin</div>';
+  remaining = [...fullDeck];
+  dealt = [];
+  dealtStrip.innerHTML = '';
+  updateLabels();
+  stopTicker();
+});
 
 btnFaster.addEventListener('click', () => {
   delayMs = Math.max(MIN_DELAY_MS, delayMs - 1000);
@@ -262,6 +325,7 @@ btnSpeech.addEventListener('click', () => {
   if (!supportsSpeech()) {
     speechEnabled = false;
     updateSpeechButton();
+    savePreferences();
     return;
   }
 
@@ -279,6 +343,7 @@ btnSpeech.addEventListener('click', () => {
   }
 
   updateSpeechButton();
+  savePreferences();
 });
 
 if (supportsSpeech()) {
@@ -287,6 +352,10 @@ if (supportsSpeech()) {
   };
   speechVoice = pickSpeechVoice();
 }
+
+updateSpeechButton();
+
+btnStart.disabled = false;
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -359,7 +428,9 @@ function filterExistingImages(urls){
     return;
   }
   remaining = [...fullDeck];
+  dealt = [];
   updateLabels();
-  currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
-  startTicker();
+  currentCardEl.innerHTML = '<div class="placeholder">Press Start to begin</div>';
+  dealtStrip.innerHTML = '';
+  started = false;
 })();
