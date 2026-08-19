@@ -33,6 +33,7 @@ let timerId = null;
 let speechEnabled = false;
 let speechVoice = null;
 let voiceUnlocked = false;
+let audioPlayer = null;
 let started = false;
 
 // Labels
@@ -111,7 +112,7 @@ function showCurrentCard(src){
   img.alt = 'Current card';
   img.src = src;
   currentCardEl.appendChild(img);
-  speakCardName(src);
+  playCardAudio(src);
 }
 
 function getCardNameFromSrc(src){
@@ -143,6 +144,49 @@ function updateSpeechButton(){
   btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
   btnSpeech.classList.toggle('is-active', isActive);
   btnSpeech.setAttribute('aria-pressed', String(isActive));
+}
+
+function titleCaseAudioName(name){
+  return name.replace(/\b[a-záéíóúñ]/gi, letter => letter.toUpperCase());
+}
+
+function getAudioNameCandidates(name){
+  const titleCaseName = titleCaseAudioName(name);
+  return [...new Set([name, titleCaseName])];
+}
+
+async function playAudioName(name){
+  if (!audioPlayer) {
+    audioPlayer = new Audio();
+    audioPlayer.preload = 'auto';
+  }
+
+  const candidates = getAudioNameCandidates(name);
+  for (const candidate of candidates) {
+    try {
+      audioPlayer.src = `./audio/${encodeURIComponent(candidate)}.mp3`;
+      audioPlayer.currentTime = 0;
+      await audioPlayer.play();
+      return true;
+    } catch (error) {
+      audioPlayer.pause();
+    }
+  }
+
+  return false;
+}
+
+function playCardAudio(src){
+  if (!speechEnabled) return;
+
+  const cardName = getCardNameFromSrc(src);
+  if (!cardName) return;
+
+  playAudioName(cardName).then(audioPlayed => {
+    if (!audioPlayed) {
+      speakCardName(src);
+    }
+  });
 }
 
 function unlockVoiceForSafari(){
@@ -274,7 +318,11 @@ function beginGame(){
     }
     speechVoice = pickSpeechVoice();
     unlockVoiceForSafari();
-    speakIntroPhrase();
+  }
+  if (speechEnabled) {
+    playAudioName('start').then(audioPlayed => {
+      if (!audioPlayed && supportsSpeech()) speakIntroPhrase();
+    });
   }
 
   remaining = [...fullDeck];
@@ -368,8 +416,14 @@ btnSpeech.addEventListener('click', () => {
     }
     speechVoice = pickSpeechVoice();
     unlockVoiceForSafari();
-    speakTestPhrase();
+    playAudioName('start').then(audioPlayed => {
+      if (!audioPlayed) speakTestPhrase();
+    });
   } else {
+    if (audioPlayer) {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+    }
     window.speechSynthesis.cancel();
     voiceUnlocked = false;
   }
