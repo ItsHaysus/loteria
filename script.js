@@ -164,7 +164,7 @@ async function playAudioName(name){
   const candidates = getAudioNameCandidates(name);
   for (const candidate of candidates) {
     try {
-      audioPlayer.src = `./audio/${encodeURIComponent(candidate)}.mp3`;
+      audioPlayer.src = `./audio/${encodeURIComponent(candidate)}.opus`;
       audioPlayer.currentTime = 0;
       await audioPlayer.play();
       return true;
