@@ -7,11 +7,16 @@
   --btn: #0b5138;
   --btn-hover: #13704b;
   --ring: #86efac99;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body{
+  min-height: 100dvh;
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   background-color: #10243a;
@@ -31,7 +36,9 @@ body{
   gap: 8px;
   grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 12px;
+  padding: calc(12px + var(--safe-top)) 12px 12px;
+  padding-left: calc(12px + var(--safe-left));
+  padding-right: calc(12px + var(--safe-right));
   background: linear-gradient(110deg, rgba(4, 45, 32, .96), rgba(10, 81, 56, .92));
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(134, 239, 172, .4);
@@ -68,29 +75,41 @@ body{
 .main{
   max-width: 980px;
   margin: 20px auto;
-  padding: 0 12px 24px;
+  padding: 0 calc(12px + var(--safe-left)) calc(24px + var(--safe-bottom));
+  padding-right: calc(12px + var(--safe-right));
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 110px);
 }
 
 .current-card{
-  min-height: 55vh;
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   place-items: center;
   background: linear-gradient(145deg, rgba(4, 45, 32, .84), rgba(6, 43, 32, .7));
   border: 1px solid rgba(134, 239, 172, .45);
   border-radius: 16px;
   overflow: hidden;
+  padding: 0;
 }
 .card-frame{
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 78vh);
+  max-width: 100%;
+  height: 100%;
   line-height: 0;
+  padding: 0;
 }
 
 .card-frame img{
   display: block;
-  max-height: 50vh;
-  width: auto;
+  width: 100%;
   height: auto;
+  max-height: min(68vh, 78vw);
   object-fit: contain;
   filter: drop-shadow(0 18px 30px rgba(0,0,0,.5));
   animation: pop .18s ease-out;
@@ -122,6 +141,7 @@ body{
 
 .dealt-section{
   margin-top: 18px;
+  margin-bottom: 0;
 }
 .dealt-section h2{
   font-size: 16px;
@@ -136,6 +156,7 @@ body{
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 8px;
+  align-items: end;
 }
 .dealt-strip .card-frame{
   display: inline-block;
@@ -187,11 +208,18 @@ body{
     justify-content: space-between;
     font-size: 13px;
   }
-  .current-card {
-    min-height: 45vh;
+  .main {
+    min-height: calc(100dvh - 130px);
   }
-  .current-card img {
-    max-height: 40vh;
+  .current-card {
+    min-height: 42vh;
+    padding: 0;
+  }
+  .card-frame {
+    width: min(100%, 90vw);
+  }
+  .card-frame img {
+    max-height: min(60vh, 90vw);
   }
   .dealt-strip img {
     height: 72px;
@@ -212,13 +240,18 @@ body{
   .main {
     margin: 12px auto;
     padding: 0 8px 16px;
+    min-height: calc(100dvh - 120px);
   }
   .current-card {
-    min-height: 35vh;
+    min-height: 38vh;
     border-radius: 12px;
+    padding: 0;
   }
-  .current-card img {
-    max-height: 30vh;
+  .card-frame {
+    width: min(100%, 92vw);
+  }
+  .card-frame img {
+    max-height: min(54vh, 92vw);
   }
   .dealt-section h2 {
     font-size: 14px;

@@ -4,6 +4,7 @@
   "start_url": "/loteria/",
   "scope": "/loteria/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "description": "A modern PWA for dealing Lotería cards with voice support and offline play",
   "lang": "es",
   "dir": "auto",
