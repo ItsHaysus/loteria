@@ -155,7 +155,7 @@ function createCardFrame(src, alt = 'Card'){
 
   const badge = document.createElement('span');
   badge.className = 'card-badge';
-  badge.textContent = 'art created by NM';
+  badge.textContent = 'creaded by NM';
 
   frame.appendChild(img);
   frame.appendChild(badge);
