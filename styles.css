@@ -260,23 +260,12 @@ body{
   }
 }
 
-/* iPhone Duo outer display, based on the supplied 1398 × 2034 px / 3× viewport. */
-@media (min-width: 440px) and (max-width: 490px) and (min-height: 640px) and (max-height: 710px) and (orientation: portrait) {
-  html,
-  body {
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-  }
-  body {
-    display: flex;
-    flex-direction: column;
-  }
+/* iPhone Fold outer display: 1398 × 2034 at 3× maps to about 466 × 678 CSS px. */
+@media (min-width: 450px) and (max-width: 480px) and (min-height: 650px) and (max-height: 720px) and (orientation: portrait) {
   .topbar {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 0;
-    flex: 0 0 auto;
     padding-top: calc(8px + var(--safe-top));
     padding-right: calc(8px + var(--safe-right));
     backdrop-filter: none;
@@ -320,53 +309,12 @@ body{
   .main {
     width: auto;
     max-width: none;
-    flex: 1 1 auto;
-    min-height: 0;
     margin: 12px calc(116px + var(--safe-right)) 12px 8px;
-    padding: 0 0 calc(8px + var(--safe-bottom));
-    gap: 10px;
-  }
-  .current-card {
-    flex: 1 1 0;
-    min-height: 0;
-  }
-  .dealt-section {
-    display: flex;
-    flex: 0 0 118px;
-    flex-direction: column;
-    min-height: 0;
-    margin: 0;
-  }
-  .dealt-section h2 {
-    flex: 0 0 auto;
-    margin: 0 0 6px;
-  }
-  .dealt-strip {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    align-items: flex-start;
-    padding: 0 0 4px;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  .dealt-strip .card-frame {
-    display: inline-block;
-    flex: 0 0 auto;
-    width: auto;
-    height: auto;
-  }
-  .dealt-strip img {
-    width: auto;
-    height: 76px;
   }
 }
 
-/* iPhone Duo inner display in landscape, based on 1878 × 2670 px / 3×. */
-@media (min-width: 840px) and (max-width: 940px) and (min-height: 580px) and (max-height: 680px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5) {
+/* Fold inner display: the 1878 × 2670 panel is about 626 × 890 CSS px at 3×. */
+@media (min-width: 800px) and (max-width: 1100px) and (min-height: 550px) and (max-height: 800px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5) {
   html,
   body {
     height: 100dvh;
@@ -417,7 +365,6 @@ body{
     flex: 1 1 auto;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     gap: 3px;
     overflow-x: hidden;
     overflow-y: auto;
@@ -436,68 +383,6 @@ body{
     width: 100%;
     height: auto;
     max-height: none;
-  }
-}
-
-/* iPhone Duo inner display in portrait: fit current card and carousel on screen. */
-@media (min-width: 590px) and (max-width: 660px) and (min-height: 840px) and (max-height: 940px) and (orientation: portrait) {
-  html,
-  body {
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-  }
-  body {
-    display: flex;
-    flex-direction: column;
-  }
-  .topbar {
-    flex: 0 0 auto;
-  }
-  .main {
-    width: 100%;
-    flex: 1 1 auto;
-    min-height: 0;
-    margin: 10px auto 0;
-    padding: 0 12px calc(10px + var(--safe-bottom));
-    gap: 10px;
-  }
-  .current-card {
-    flex: 1 1 0;
-    min-height: 0;
-  }
-  .dealt-section {
-    display: flex;
-    flex: 0 0 150px;
-    flex-direction: column;
-    min-height: 0;
-    margin: 0;
-  }
-  .dealt-section h2 {
-    flex: 0 0 auto;
-    margin: 0 0 8px;
-  }
-  .dealt-strip {
-    display: flex;
-    flex: 1 1 auto;
-    min-height: 0;
-    gap: 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    align-items: flex-start;
-    padding: 0 0 6px;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  .dealt-strip .card-frame {
-    display: inline-block;
-    flex: 0 0 auto;
-    width: auto;
-    height: auto;
-  }
-  .dealt-strip img {
-    width: auto;
-    height: 100px;
   }
 }
 
