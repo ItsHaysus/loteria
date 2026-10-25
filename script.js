@@ -35,22 +35,19 @@ const foldInnerLandscape = { get matches(){
 function updateFoldLayout(){
   const root = document.documentElement;
   const screenWidth = Number(window.screen?.width) || 0;
-  const screenHeight = Number(window.screen?.height) || 0;
   const viewportWidth = Number(window.innerWidth) || 0;
   const viewportHeight = Number(window.innerHeight) || 0;
-  const visualWidth = Number(window.visualViewport?.width) || 0;
-  const visualHeight = Number(window.visualViewport?.height) || 0;
-  const width = Math.max(screenWidth, viewportWidth, visualWidth);
-  const height = Math.max(screenHeight, viewportHeight, visualHeight);
   const landscape = viewportWidth > viewportHeight;
-  const shortSide = Math.min(width, height);
-  const longSide = Math.max(width, height);
-  const aspect = shortSide ? longSide / shortSide : 0;
+  // iOS standalone can report a 373px layout viewport while the foldable outer display is 457px wide.
+  // Use physical screen width to identify that device mode; its CSS is applied by the root class.
+  const outerDisplayWidth = Math.max(screenWidth, viewportWidth);
+  const isFoldOuter = !landscape && outerDisplayWidth >= 450 && outerDisplayWidth <= 500;
+  const width = viewportWidth;
 
-  root.classList.toggle('fold-outer', !landscape && width >= 450 && width <= 500);
+  root.classList.toggle('fold-outer', isFoldOuter);
   root.classList.toggle(
     'fold-inner-landscape',
-    landscape && width >= 800 && width <= 1100 && aspect >= 1.35 && aspect <= 1.65
+    landscape && width >= 800 && width <= 1100
   );
   root.classList.toggle(
     'fold-inner-portrait',
@@ -110,6 +107,7 @@ function refreshDebugView(){
     `inner: ${window.innerWidth}×${window.innerHeight}`,
     `outer: ${window.outerWidth}×${window.outerHeight}`,
     `screen: ${screen.width}×${screen.height} (avail ${screen.availWidth}×${screen.availHeight})` ,
+    `CSS media-query viewport: ${window.innerWidth}×${window.innerHeight} CSS px`,
     `devicePixelRatio: ${window.devicePixelRatio}`,
     `documentElement client: ${root.clientWidth}×${root.clientHeight}`,
     `scroll: ${window.scrollX}, ${window.scrollY}`,
@@ -122,6 +120,8 @@ function refreshDebugView(){
     '',
     'LAYOUT',
     `active root classes: ${rootClasses}`,
+    `fold-outer device width: max(screen ${screen.width}px, viewport ${window.innerWidth}px) = ${Math.max(screen.width, window.innerWidth)}px; ${root.classList.contains('fold-outer') ? 'outer-display layout active' : 'outer-display layout inactive'} (portrait, 450–500px range)`,
+    `fold-inner-landscape: ${root.classList.contains('fold-inner-landscape') ? 'active' : 'inactive'} (landscape viewport width ${window.innerWidth}px; target range 800–1100px)`,
     `topbar: ${getElementMetrics(topbar)}`,
     `main: ${getElementMetrics(main)}`,
     `current card: ${getElementMetrics(currentCard)}`,
@@ -498,17 +498,12 @@ function appendDealt(src){
 
 function orderDealtCards(){
   const frames = Array.from(dealtStrip.children);
-  frames.sort((a, b) => Number(a.dataset.dealtIndex) - Number(b.dataset.dealtIndex));
-  if (foldInnerLandscape.matches) {
-    frames.reverse();
-  }
+  frames.sort((a, b) => Number(b.dataset.dealtIndex) - Number(a.dataset.dealtIndex));
   dealtStrip.replaceChildren(...frames);
   if (foldInnerLandscape.matches) {
     dealtStrip.scrollTop = 0;
-    dealtStrip.scrollLeft = 0;
-  } else {
-    dealtStrip.scrollLeft = dealtStrip.scrollWidth;
   }
+  dealtStrip.scrollLeft = 0;
 }
 
 // Stop ticker
