@@ -639,10 +639,12 @@ function dealOne(){
   if (paused || remaining.length === 0) return;
   const idx = Math.floor(Math.random() * remaining.length);
   const [card] = remaining.splice(idx, 1);
+  if (dealt.length > 0) {
+    appendDealt(dealt[dealt.length - 1]);
+  }
   dealt.push(card);
 
   showCurrentCard(card);
-  appendDealt(card);
   updateLabels();
 
   if (remaining.length === 0) {
