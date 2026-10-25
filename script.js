@@ -22,7 +22,7 @@ const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
 const dealtStrip     = document.getElementById('dealt-strip');
-const foldInnerLandscape = window.matchMedia('(min-width: 800px) and (max-width: 1100px) and (min-height: 550px) and (max-height: 800px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5)');
+const foldInnerLandscape = window.matchMedia('(min-width: 800px) and (max-width: 1200px) and (min-height: 550px) and (max-height: 760px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 7/4), (horizontal-viewport-segments: 2) and (orientation: landscape)');
 
 // State
 let fullDeck = [];     // array of image URLs
