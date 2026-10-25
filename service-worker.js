@@ -1,7 +1,7 @@
 // Simple PWA service worker for app shell + runtime caching of /cards/*
 // Works on GitHub Pages (HTTPS required)
 
-const CACHE_NAME = 'card-dealer-v6';
+const CACHE_NAME = 'card-dealer-v7';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,7 +29,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: app shell from cache first; runtime cache for /cards and /cards/cards.json
+// Fetch: keep card data available offline; refresh the app shell from the network first.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -39,13 +39,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // App shell: cache-first
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  const isAppShell = event.request.mode === 'navigate'
+    || ['script', 'style', 'manifest'].includes(event.request.destination);
+
+  if (isAppShell) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    if (response && response.ok) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request) || await caches.match(request);
+    if (cached) return cached;
+    throw error;
+  }
+}
 
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
