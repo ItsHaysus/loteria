@@ -17,6 +17,9 @@ const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
 const btnPause   = document.getElementById('btn-pause');
 const btnSpeech  = document.getElementById('btn-speech');
+const btnReplay  = document.getElementById('btn-replay');
+const audioVolume = document.getElementById('audio-volume');
+const audioVolumeValue = document.getElementById('audio-volume-value');
 const btnLanguage = document.getElementById('btn-language');
 const LANGUAGE_KEY = 'loteria-language';
 let language = 'en';
@@ -25,7 +28,7 @@ const TEXT = {
   en: {
     start: 'Start', startTitle: 'Start the game', restart: 'Restart', restartTitle: 'Restart game (R)',
     faster: 'Faster (-1s)', fasterTitle: 'Speed up (< or comma)', slower: 'Slower (+1s)', slowerTitle: 'Slow down (> or period)',
-    pause: 'Pause', resume: 'Resume', pauseTitle: 'Pause/Resume (Space)', voiceOn: 'Voice: On', voiceOff: 'Voice: Off', voiceTitle: 'Enable/disable spoken card names',
+    pause: 'Pause', resume: 'Resume', pauseTitle: 'Pause/Resume (Space)', voiceOn: 'Voice: On', voiceOff: 'Voice: Off', voiceTitle: 'Enable/disable spoken card names', replay: 'Replay', replayTitle: 'Replay current card audio', volume: 'Volume', volumeTitle: 'Set audio volume',
     languageButton: 'Español', languageLabel: 'Switch language to Spanish', speed: 'Speed: {seconds}s / card', speedInitial: 'Speed: 5s / card',
     remaining: 'Remaining: {count}', remainingInitial: 'Remaining: —', cardsPlaceholder: 'Cards will appear here', startPlaceholder: 'Press Start to begin',
     loading: 'Loading deck...', loadingCount: 'Loading {count} cards...', deckError: '❌ Error loading deck list. Check console.',
@@ -35,7 +38,7 @@ const TEXT = {
   es: {
     start: 'Iniciar', startTitle: 'Iniciar el juego', restart: 'Reiniciar', restartTitle: 'Reiniciar el juego (R)',
     faster: 'Más rápido (-1s)', fasterTitle: 'Acelerar (< o coma)', slower: 'Más lento (+1s)', slowerTitle: 'Ralentizar (> o punto)',
-    pause: 'Pausar', resume: 'Continuar', pauseTitle: 'Pausar/continuar (Espacio)', voiceOn: 'Voz: activada', voiceOff: 'Voz: desactivada', voiceTitle: 'Activar/desactivar nombres hablados',
+    pause: 'Pausar', resume: 'Continuar', pauseTitle: 'Pausar/continuar (Espacio)', voiceOn: 'Voz: activada', voiceOff: 'Voz: desactivada', voiceTitle: 'Activar/desactivar nombres hablados', replay: 'Repetir', replayTitle: 'Repetir el audio de la carta actual', volume: 'Volumen', volumeTitle: 'Ajustar volumen del audio',
     languageButton: 'English', languageLabel: 'Cambiar idioma a inglés', speed: 'Velocidad: {seconds}s / carta', speedInitial: 'Velocidad: 5s / carta',
     remaining: 'Restantes: {count}', remainingInitial: 'Restantes: —', cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
     loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...', deckError: '❌ Error al cargar la lista. Revisa la consola.',
@@ -124,6 +127,8 @@ let speechEnabled = false;
 let speechVoice = null;
 let voiceUnlocked = false;
 let audioPlayer = null;
+let volume = 1;
+let currentCardSrc = null;
 let started = false;
 
 function normalizeCardName(name){
@@ -147,6 +152,7 @@ function savePreferences(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       delayMs,
       speechEnabled,
+      volume,
     }));
   } catch (e) {
     console.warn('Could not save preferences:', e);
@@ -158,12 +164,15 @@ function loadPreferences(){
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const { delayMs: savedDelay, speechEnabled: savedSpeech } = JSON.parse(saved);
+      const { delayMs: savedDelay, speechEnabled: savedSpeech, volume: savedVolume } = JSON.parse(saved);
       if (savedDelay >= MIN_DELAY_MS) {
         delayMs = savedDelay;
       }
       if (typeof savedSpeech === 'boolean') {
         speechEnabled = savedSpeech;
+      }
+      if (typeof savedVolume === 'number' && savedVolume >= 0 && savedVolume <= 1) {
+        volume = savedVolume;
       }
     }
   } catch (e) {
@@ -171,6 +180,7 @@ function loadPreferences(){
   }
 
   updateSpeechButton();
+  updateVolumeControl();
 }
 
 function restoreSavedVoicePreference(){
@@ -223,6 +233,8 @@ function showPlaceholder(key, values = {}){
 
 // Show card
 function showCurrentCard(src){
+  currentCardSrc = src;
+  btnReplay.disabled = false;
   currentCardEl.innerHTML = '';
   currentCardEl.appendChild(createCardFrame(src, t('copyCard')));
   playCardAudio(src);
@@ -275,6 +287,8 @@ async function playAudioName(name){
     audioPlayer.preload = 'auto';
   }
 
+  audioPlayer.pause();
+  audioPlayer.volume = volume;
   const candidates = getAudioNameCandidates(name);
   for (const candidate of candidates) {
     try {
@@ -290,17 +304,28 @@ async function playAudioName(name){
   return false;
 }
 
-function playCardAudio(src){
-  if (!speechEnabled) return;
+function playCardAudio(src, force = false){
+  if (!speechEnabled && !force) return;
 
   const cardName = getCardNameFromSrc(src);
   if (!cardName) return;
 
   playAudioName(cardName).then(audioPlayed => {
-    if (!audioPlayed) {
+    if (!audioPlayed && speechEnabled) {
       speakCardName(src);
     }
   });
+}
+
+function replayCurrentCard(){
+  if (currentCardSrc) playCardAudio(currentCardSrc, true);
+}
+
+function updateVolumeControl(){
+  if (!audioVolume || !audioVolumeValue) return;
+  audioVolume.value = String(volume);
+  audioVolumeValue.textContent = `${Math.round(volume * 100)}%`;
+  if (audioPlayer) audioPlayer.volume = volume;
 }
 
 function unlockVoiceForSafari(){
@@ -325,7 +350,7 @@ function speakIntroPhrase(){
   introUtterance.lang = 'es-MX';
   introUtterance.rate = 0.9;
   introUtterance.pitch = 1;
-  introUtterance.volume = 1;
+  introUtterance.volume = volume;
 
   if (speechVoice) {
     introUtterance.voice = speechVoice;
@@ -346,7 +371,7 @@ function speakTestPhrase(){
   testUtterance.lang = 'es-MX';
   testUtterance.rate = 0.9;
   testUtterance.pitch = 1;
-  testUtterance.volume = 1;
+  testUtterance.volume = volume;
 
   if (speechVoice) {
     testUtterance.voice = speechVoice;
@@ -376,7 +401,7 @@ function speakCardName(src){
   utterance.lang = 'es-MX';
   utterance.rate = 0.9;
   utterance.pitch = 1;
-  utterance.volume = 1;
+  utterance.volume = volume;
 
   if (!speechVoice) {
     speechVoice = pickSpeechVoice();
@@ -479,6 +504,8 @@ function dealOne(){
 function resetGame(){
   stopTicker();
   paused = false;
+  currentCardSrc = null;
+  btnReplay.disabled = true;
   btnPause.textContent = t('pause');
   btnPause.setAttribute('aria-pressed', false);
 
@@ -555,6 +582,14 @@ btnSpeech.addEventListener('click', () => {
   }
 
   updateSpeechButton();
+  savePreferences();
+});
+
+btnReplay.addEventListener('click', replayCurrentCard);
+
+audioVolume.addEventListener('input', () => {
+  volume = Number(audioVolume.value);
+  updateVolumeControl();
   savePreferences();
 });
 
