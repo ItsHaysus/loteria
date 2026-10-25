@@ -40,7 +40,25 @@
     </section>
   </main>
 
-  <div class="version-counter" aria-label="Version 1.0.0">1.0.0</div>
+  <button id="debug-toggle" class="debug-toggle" type="button" aria-controls="debug-panel" aria-expanded="false">Debug</button>
+  <div class="version-counter" id="version-counter" aria-label="Version 1.1.0">1.1.0</div>
+
+  <section id="debug-panel" class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="debug-title" hidden>
+    <div class="debug-dialog">
+      <header class="debug-header">
+        <div>
+          <h2 id="debug-title">Viewport diagnostics</h2>
+          <p>Live device and layout measurements</p>
+        </div>
+        <button id="debug-close" class="debug-close" type="button" aria-label="Close diagnostics">×</button>
+      </header>
+      <pre id="debug-output" class="debug-output" aria-live="polite"></pre>
+      <footer class="debug-footer">
+        <span id="debug-status" role="status">Updates on resize and orientation changes.</span>
+        <button id="debug-copy" class="btn" type="button">Copy diagnostics</button>
+      </footer>
+    </div>
+  </section>
 
   <script src="script.js" defer></script>
   <script>

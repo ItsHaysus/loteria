@@ -17,6 +17,12 @@ const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
 const btnPause   = document.getElementById('btn-pause');
 const btnSpeech  = document.getElementById('btn-speech');
+const debugToggle = document.getElementById('debug-toggle');
+const debugPanel = document.getElementById('debug-panel');
+const debugClose = document.getElementById('debug-close');
+const debugOutput = document.getElementById('debug-output');
+const debugCopy = document.getElementById('debug-copy');
+const debugStatus = document.getElementById('debug-status');
 
 const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
@@ -51,12 +57,116 @@ function updateFoldLayout(){
     !landscape && width >= 600 && width <= 680
   );
   orderDealtCards();
+  refreshDebugView();
 }
 
 window.addEventListener('resize', updateFoldLayout, { passive: true });
 window.addEventListener('orientationchange', updateFoldLayout, { passive: true });
 window.visualViewport?.addEventListener('resize', updateFoldLayout, { passive: true });
 updateFoldLayout();
+
+function getElementMetrics(element){
+  if (!element) return 'not found';
+  const rect = element.getBoundingClientRect();
+  return `${Math.round(rect.width)}×${Math.round(rect.height)} at (${Math.round(rect.left)}, ${Math.round(rect.top)})`;
+}
+
+function getSafeAreaInsets(){
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(probe);
+  const styles = getComputedStyle(probe);
+  const insets = `top ${styles.paddingTop}, right ${styles.paddingRight}, bottom ${styles.paddingBottom}, left ${styles.paddingLeft}`;
+  probe.remove();
+  return insets;
+}
+
+function refreshDebugView(){
+  if (!debugOutput) return;
+  const viewport = window.visualViewport;
+  const root = document.documentElement;
+  const main = document.querySelector('.main');
+  const topbar = document.querySelector('.topbar');
+  const currentCard = document.getElementById('current-card');
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const orientation = screen.orientation?.type || (window.innerWidth >= window.innerHeight ? 'landscape' : 'portrait');
+  const rootClasses = root.className || '(none)';
+  const mediaQueries = [
+    '(max-width: 480px)',
+    '(min-width: 450px) and (max-width: 500px) and (orientation: portrait)',
+    '(min-width: 600px) and (max-width: 680px) and (orientation: portrait)',
+    '(min-width: 800px) and (max-width: 1100px) and (orientation: landscape)',
+  ];
+  const breakpointResults = mediaQueries.map(query => `${window.matchMedia(query).matches ? 'YES' : 'no '} ${query}`).join('\n');
+
+  debugOutput.textContent = [
+    `Version: ${document.getElementById('version-counter')?.textContent.trim() || 'unknown'}`,
+    `Captured: ${new Date().toISOString()}`,
+    `Display mode: ${standalone ? 'standalone PWA' : 'browser/tab'}`,
+    `Orientation: ${orientation}`,
+    `User agent: ${navigator.userAgent}`,
+    '',
+    'WINDOW / SCREEN',
+    `inner: ${window.innerWidth}×${window.innerHeight}`,
+    `outer: ${window.outerWidth}×${window.outerHeight}`,
+    `screen: ${screen.width}×${screen.height} (avail ${screen.availWidth}×${screen.availHeight})` ,
+    `devicePixelRatio: ${window.devicePixelRatio}`,
+    `documentElement client: ${root.clientWidth}×${root.clientHeight}`,
+    `scroll: ${window.scrollX}, ${window.scrollY}`,
+    '',
+    'VISUAL VIEWPORT',
+    viewport
+      ? `size: ${viewport.width.toFixed(1)}×${viewport.height.toFixed(1)}; offset: ${viewport.offsetLeft.toFixed(1)}, ${viewport.offsetTop.toFixed(1)}; page: ${viewport.pageLeft.toFixed(1)}, ${viewport.pageTop.toFixed(1)}; scale: ${viewport.scale}`
+      : 'not available',
+    `safe-area insets: ${getSafeAreaInsets()}`,
+    '',
+    'LAYOUT',
+    `active root classes: ${rootClasses}`,
+    `topbar: ${getElementMetrics(topbar)}`,
+    `main: ${getElementMetrics(main)}`,
+    `current card: ${getElementMetrics(currentCard)}`,
+    `main computed: display ${main ? getComputedStyle(main).display : 'n/a'}; height ${main ? getComputedStyle(main).height : 'n/a'}`,
+    '',
+    'BREAKPOINTS',
+    breakpointResults,
+  ].join('\n');
+}
+
+function setDebugOpen(open){
+  debugPanel.hidden = !open;
+  debugToggle.setAttribute('aria-expanded', String(open));
+  if (open) {
+    refreshDebugView();
+    debugClose.focus();
+  } else {
+    debugToggle.focus();
+  }
+}
+
+debugToggle.addEventListener('click', () => setDebugOpen(true));
+debugClose.addEventListener('click', () => setDebugOpen(false));
+debugPanel.addEventListener('click', event => {
+  if (event.target === debugPanel) setDebugOpen(false);
+});
+debugCopy.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(debugOutput.textContent);
+    debugStatus.textContent = 'Diagnostics copied to clipboard.';
+  } catch (error) {
+    debugStatus.textContent = 'Clipboard unavailable; select the text above to copy.';
+  }
+});
+window.addEventListener('resize', refreshDebugView, { passive: true });
+window.addEventListener('orientationchange', refreshDebugView, { passive: true });
+window.addEventListener('pageshow', refreshDebugView, { passive: true });
+window.visualViewport?.addEventListener('resize', refreshDebugView, { passive: true });
+window.visualViewport?.addEventListener('scroll', refreshDebugView, { passive: true });
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !debugPanel.hidden) setDebugOpen(false);
+  if (event.key.toLowerCase() === 'd' && !['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
+    setDebugOpen(debugPanel.hidden);
+  }
+});
 
 // State
 let fullDeck = [];     // array of image URLs
