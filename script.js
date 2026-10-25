@@ -1,5 +1,5 @@
 /* Card Dealer PWA - Lotería Edition
- * Loads cards from /cards/cards.json (JPG filenames)
+ * Loads WebP card filenames from /Cards/cards.json
  * Controls: Restart (R), Faster(-1s, <), Slower(+1s, >), Pause (Space)
  * Default speed: 5s per card
  * Random deals without repeats while cards remain
@@ -261,44 +261,12 @@ let voiceUnlocked = false;
 let audioPlayer = null;
 let started = false;
 
-const CARD_NAME_ALIASES = {
-  'El Alacran': 'El Alacrán',
-  'El Arbol': 'El Árbol',
-  'El Bandolon': 'El Bandolón',
-  'El Barril': 'El Barril',
-  'El Camaron': 'El Camarón',
-  'El Cantarito': 'El Cantarito',
-  'El Catrin': 'El Catrín',
-  'El Corazon': 'El Corazón',
-  'El Cotorro': 'El Cotorro',
-  'El Diablo': 'El Diablito',
-  'El Gorrito': 'El Gorrito',
-  'El Melon': 'El Melón',
-  'El Musico': 'El Músico',
-  'El Pajaro': 'El Pájaro',
-  'El Pescado': 'El Pescado',
-  'El Valiente': 'El Valiente',
-  'El Violoncello': 'El Violoncello',
-  'La Arana': 'La Araña',
-  'La Bandera': 'La Bandera',
-  'La Bota': 'La Bota',
-  'La Botella': 'La Botella',
-  'La Escalera': 'La Escalera',
-  'La Garza': 'La Garza',
-  'La Mano': 'La Mano',
-  'La Muerte': 'La Muerte',
-  'La Pera': 'La Pera',
-  'La Sandia': 'La Sandía',
-  'La Sirena': 'La Sirena',
-};
-
 function normalizeCardName(name){
   const raw = String(name || '').trim();
   if (!raw) return '';
 
   const withoutExtension = raw.replace(/\.[^/.]+$/, '');
-  const withoutDuplicateSuffix = withoutExtension.replace(/\s+\(\d+\)$/, '');
-  return CARD_NAME_ALIASES[withoutDuplicateSuffix] || withoutDuplicateSuffix;
+  return withoutExtension;
 }
 
 // Labels
@@ -420,9 +388,8 @@ function supportsSpeech(){
 function pickSpeechVoice(){
   if (!supportsSpeech()) return null;
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(voice => /es|spanish/i.test(voice.lang))
-    || voices.find(voice => /en|english/i.test(voice.lang))
-    || voices[0];
+  const preferred = voices.find(voice => /^es-MX$/i.test(voice.lang))
+    || voices.find(voice => /^es(-|$)/i.test(voice.lang));
   return preferred || null;
 }
 
@@ -440,10 +407,8 @@ function titleCaseAudioName(name){
 
 function getAudioNameCandidates(name){
   const normalized = normalizeCardName(name);
-  const directMatch = CARD_NAME_ALIASES[normalized] || normalized;
   const titleCaseName = titleCaseAudioName(normalized);
-  const titleCaseDirect = titleCaseAudioName(directMatch);
-  return [...new Set([normalized, directMatch, titleCaseName, titleCaseDirect])];
+  return [...new Set([normalized, titleCaseName])];
 }
 
 async function playAudioName(name){

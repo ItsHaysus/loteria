@@ -1,7 +1,7 @@
-// Simple PWA service worker for app shell + runtime caching of /cards/*
+// Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on GitHub Pages (HTTPS required)
 
-const CACHE_NAME = 'card-dealer-v17';
+const CACHE_NAME = 'card-dealer-v18';
 const APP_SHELL = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Runtime cache for cards
-  if (url.pathname.startsWith('/cards/')) {
+  if (url.pathname.includes('/Cards/')) {
     event.respondWith(staleWhileRevalidate(event.request));
     return;
   }
