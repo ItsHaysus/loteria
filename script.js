@@ -22,9 +22,41 @@ const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
 const dealtStrip     = document.getElementById('dealt-strip');
-const foldInnerLandscape = window.matchMedia(
-  '(min-width: 800px) and (max-width: 1100px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5)'
-);
+const foldInnerLandscape = { get matches(){
+  return document.documentElement.classList.contains('fold-inner-landscape');
+} };
+
+function updateFoldLayout(){
+  const root = document.documentElement;
+  const screenWidth = Number(window.screen?.width) || 0;
+  const screenHeight = Number(window.screen?.height) || 0;
+  const viewportWidth = Number(window.innerWidth) || 0;
+  const viewportHeight = Number(window.innerHeight) || 0;
+  const visualWidth = Number(window.visualViewport?.width) || 0;
+  const visualHeight = Number(window.visualViewport?.height) || 0;
+  const width = Math.max(screenWidth, viewportWidth, visualWidth);
+  const height = Math.max(screenHeight, viewportHeight, visualHeight);
+  const landscape = viewportWidth > viewportHeight;
+  const shortSide = Math.min(width, height);
+  const longSide = Math.max(width, height);
+  const aspect = shortSide ? longSide / shortSide : 0;
+
+  root.classList.toggle('fold-outer', !landscape && width >= 450 && width <= 500);
+  root.classList.toggle(
+    'fold-inner-landscape',
+    landscape && width >= 800 && width <= 1100 && aspect >= 1.35 && aspect <= 1.65
+  );
+  root.classList.toggle(
+    'fold-inner-portrait',
+    !landscape && width >= 600 && width <= 680
+  );
+  orderDealtCards();
+}
+
+window.addEventListener('resize', updateFoldLayout, { passive: true });
+window.addEventListener('orientationchange', updateFoldLayout, { passive: true });
+window.visualViewport?.addEventListener('resize', updateFoldLayout, { passive: true });
+updateFoldLayout();
 
 // State
 let fullDeck = [];     // array of image URLs
@@ -367,12 +399,6 @@ function orderDealtCards(){
   } else {
     dealtStrip.scrollLeft = dealtStrip.scrollWidth;
   }
-}
-
-if (typeof foldInnerLandscape.addEventListener === 'function') {
-  foldInnerLandscape.addEventListener('change', orderDealtCards);
-} else {
-  foldInnerLandscape.addListener(orderDealtCards);
 }
 
 // Stop ticker

@@ -519,6 +519,204 @@ body{
   }
 }
 
+:root.fold-outer,
+:root.fold-inner-landscape,
+:root.fold-inner-portrait,
+:root.fold-outer body,
+:root.fold-inner-landscape body,
+:root.fold-inner-portrait body {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:root.fold-outer body,
+:root.fold-inner-landscape body,
+:root.fold-inner-portrait body {
+  display: flex;
+  flex-direction: column;
+}
+
+:root.fold-outer .topbar,
+:root.fold-inner-landscape .topbar,
+:root.fold-inner-portrait .topbar {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+:root.fold-outer .topbar {
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 0;
+  padding-top: calc(8px + var(--safe-top));
+  padding-right: calc(8px + var(--safe-right));
+  backdrop-filter: none;
+}
+:root.fold-outer .controls {
+  position: fixed;
+  z-index: 20;
+  right: calc(8px + var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  width: 100px;
+  padding: 8px;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 6px;
+  border: 1px solid rgba(134, 239, 172, .45);
+  border-radius: 16px;
+  background: rgba(4, 45, 32, .94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(10px);
+}
+:root.fold-outer .status {
+  width: auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 4px 2px 8px;
+}
+:root.fold-outer .status span { white-space: nowrap; }
+:root.fold-outer .btn {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 4px;
+  font-size: 11px;
+}
+:root.fold-outer .main {
+  width: auto;
+  max-width: none;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 12px calc(116px + var(--safe-right)) 12px 8px;
+  padding: 0 0 calc(8px + var(--safe-bottom));
+}
+:root.fold-outer .current-card { flex: 1 1 0; min-height: 0; }
+:root.fold-outer .dealt-section {
+  display: flex;
+  flex: 0 0 104px;
+  flex-direction: column;
+  min-height: 0;
+  margin: 8px 0 0;
+  overflow: hidden;
+}
+:root.fold-outer .dealt-section h2 { flex: 0 0 auto; margin: 0 0 6px; }
+:root.fold-outer .dealt-strip {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 4px;
+  align-items: flex-end;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+:root.fold-outer .dealt-strip .card-frame,
+:root.fold-inner-portrait .dealt-strip .card-frame {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+}
+:root.fold-outer .dealt-strip img { display: block; height: 60px; width: auto; }
+
+:root.fold-inner-landscape .main {
+  max-width: 1400px;
+  width: 100%;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 22vw);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+  margin: 0 auto;
+  padding-bottom: var(--safe-bottom);
+}
+:root.fold-inner-landscape .current-card { grid-column: 1; grid-row: 1; min-height: 0; }
+:root.fold-inner-landscape .dealt-section {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+:root.fold-inner-landscape .dealt-section h2 { flex: 0 0 auto; margin-top: 0; }
+:root.fold-inner-landscape .dealt-strip {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 4px 8px 0;
+}
+:root.fold-inner-landscape .dealt-strip .card-frame {
+  display: block;
+  flex: 0 0 auto;
+  width: min(100%, 140px);
+  height: auto;
+}
+:root.fold-inner-landscape .dealt-strip img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+
+:root.fold-inner-portrait .main {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
+}
+:root.fold-inner-portrait .current-card { flex: 1 1 0; min-height: 0; }
+:root.fold-inner-portrait .card-frame { width: min(100%, 78vw); }
+:root.fold-inner-portrait .card-frame img { max-height: 58vh; }
+:root.fold-inner-portrait .dealt-section {
+  display: flex;
+  flex: 0 0 128px;
+  flex-direction: column;
+  min-height: 0;
+  margin: 10px 0 0;
+  overflow: hidden;
+}
+:root.fold-inner-portrait .dealt-section h2 { flex: 0 0 auto; margin: 0 0 6px; }
+:root.fold-inner-portrait .dealt-strip {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 8px;
+  align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 4px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+:root.fold-inner-portrait .dealt-strip img {
+  display: block;
+  width: auto;
+  height: 84px;
+  max-height: 84px;
+}
+
 /* Print styles */
 @media print {
   .topbar,
