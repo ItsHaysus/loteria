@@ -22,6 +22,7 @@ const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
 const dealtStrip     = document.getElementById('dealt-strip');
+const foldInnerLandscape = window.matchMedia('(min-width: 800px) and (max-width: 1100px) and (min-height: 550px) and (max-height: 800px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5)');
 
 // State
 let fullDeck = [];     // array of image URLs
@@ -345,8 +346,20 @@ function speakCardName(src){
 
 // Add to dealt strip
 function appendDealt(src){
-  dealtStrip.appendChild(createCardFrame(src, 'Dealt card', false));
+  const frame = createCardFrame(src, 'Dealt card', false);
+  if (foldInnerLandscape.matches) {
+    dealtStrip.prepend(frame);
+  } else {
+    dealtStrip.appendChild(frame);
+  }
 }
+
+function renderDealtCards(){
+  const cards = foldInnerLandscape.matches ? [...dealt].reverse() : dealt;
+  dealtStrip.replaceChildren(...cards.map(src => createCardFrame(src, 'Dealt card', false)));
+}
+
+foldInnerLandscape.addEventListener('change', renderDealtCards);
 
 // Stop ticker
 function stopTicker(){
