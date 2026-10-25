@@ -22,6 +22,9 @@ const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
 const dealtStrip     = document.getElementById('dealt-strip');
+const foldInnerLandscape = window.matchMedia(
+  '(min-width: 800px) and (max-width: 1100px) and (min-height: 550px) and (max-height: 800px) and (orientation: landscape) and (min-aspect-ratio: 27/20) and (max-aspect-ratio: 8/5)'
+);
 
 // State
 let fullDeck = [];     // array of image URLs
@@ -345,7 +348,31 @@ function speakCardName(src){
 
 // Add to dealt strip
 function appendDealt(src){
-  dealtStrip.appendChild(createCardFrame(src, 'Dealt card', false));
+  const frame = createCardFrame(src, 'Dealt card', false);
+  frame.dataset.dealtIndex = String(dealt.length - 1);
+  dealtStrip.appendChild(frame);
+  orderDealtCards();
+}
+
+function orderDealtCards(){
+  const frames = Array.from(dealtStrip.children);
+  frames.sort((a, b) => Number(a.dataset.dealtIndex) - Number(b.dataset.dealtIndex));
+  if (foldInnerLandscape.matches) {
+    frames.reverse();
+  }
+  dealtStrip.replaceChildren(...frames);
+  if (foldInnerLandscape.matches) {
+    dealtStrip.scrollTop = 0;
+    dealtStrip.scrollLeft = 0;
+  } else {
+    dealtStrip.scrollLeft = dealtStrip.scrollWidth;
+  }
+}
+
+if (typeof foldInnerLandscape.addEventListener === 'function') {
+  foldInnerLandscape.addEventListener('change', orderDealtCards);
+} else {
+  foldInnerLandscape.addListener(orderDealtCards);
 }
 
 // Stop ticker

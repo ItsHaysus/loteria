@@ -7,7 +7,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#0b1220",
   "theme_color": "#0f172a",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "lang": "es",
   "icons": [
     { "src": "icons/loteria-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
