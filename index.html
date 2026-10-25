@@ -41,7 +41,7 @@
   </main>
 
   <button id="debug-toggle" class="debug-toggle" type="button" aria-controls="debug-panel" aria-expanded="false">Debug</button>
-  <div class="version-counter" id="version-counter" aria-label="Version 1.2.0">1.2.0</div>
+  <div class="version-counter" id="version-counter" aria-label="Version 1.2.2">1.2.2</div>
 
   <section id="debug-panel" class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="debug-title" hidden>
     <div class="debug-dialog">
@@ -71,10 +71,21 @@
           window.location.reload();
         }
       });
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
-          .then(registration => registration.update())
-          .catch(console.error);
+      window.addEventListener('load', async () => {
+        try {
+          // Version the worker URL to bypass stale iOS Home Screen app caches.
+          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.2.2', {
+            updateViaCache: 'none',
+          });
+          const checkForUpdate = () => registration.update().catch(console.error);
+          checkForUpdate();
+          window.addEventListener('pageshow', checkForUpdate);
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkForUpdate();
+          });
+        } catch (error) {
+          console.error('Service worker registration failed:', error);
+        }
       });
     }
   </script>
