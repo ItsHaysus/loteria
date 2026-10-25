@@ -671,6 +671,7 @@ body{
 :root.fold-outer .controls #btn-slower { order: 4; }
 :root.fold-outer .controls #btn-pause { order: 5; }
 :root.fold-outer .controls #btn-speech { order: 6; }
+:root.fold-outer .controls #btn-language { order: 7; }
 :root.fold-outer .status {
   width: auto;
   flex-direction: row;

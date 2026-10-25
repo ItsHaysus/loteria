@@ -17,6 +17,86 @@ const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
 const btnPause   = document.getElementById('btn-pause');
 const btnSpeech  = document.getElementById('btn-speech');
+const btnLanguage = document.getElementById('btn-language');
+const LANGUAGE_KEY = 'loteria-language';
+let language = 'en';
+try { language = localStorage.getItem(LANGUAGE_KEY) === 'es' ? 'es' : 'en'; } catch (error) { console.warn('Could not load language preference:', error); }
+const TEXT = {
+  en: {
+    start: 'Start', startTitle: 'Start the game', restart: 'Restart', restartTitle: 'Restart game (R)',
+    faster: 'Faster (-1s)', fasterTitle: 'Speed up (< or comma)', slower: 'Slower (+1s)', slowerTitle: 'Slow down (> or period)',
+    pause: 'Pause', resume: 'Resume', pauseTitle: 'Pause/Resume (Space)', voiceOn: 'Voice: On', voiceOff: 'Voice: Off', voiceTitle: 'Enable/disable spoken card names',
+    languageButton: 'Español', languageLabel: 'Switch language to Spanish', speed: 'Speed: {seconds}s / card', speedInitial: 'Speed: 5s / card',
+    remaining: 'Remaining: {count}', remainingInitial: 'Remaining: —', cardsPlaceholder: 'Cards will appear here', startPlaceholder: 'Press Start to begin',
+    loading: 'Loading deck...', loadingCount: 'Loading {count} cards...', deckError: '❌ Error loading deck list. Check console.',
+    noCards: '❌ No cards found in /Cards/cards.json', dealt: 'Dealt (in order):', debug: 'Debug', debugTitle: 'Viewport diagnostics',
+    debugSubtitle: 'Live device and layout measurements', closeDebug: 'Close diagnostics', debugStatus: 'Updates on resize and orientation changes.',
+    copyDebug: 'Copy diagnostics', copied: 'Diagnostics copied to clipboard.', copyUnavailable: 'Clipboard unavailable; select the text above to copy.',
+    version: 'Version', captured: 'Captured', displayMode: 'Display mode', standalone: 'standalone PWA', browser: 'browser/tab',
+    orientation: 'Orientation', windowScreen: 'WINDOW / SCREEN', inner: 'inner', outer: 'outer', screen: 'screen', avail: 'avail',
+    cssViewport: 'CSS media-query viewport', pixelRatio: 'devicePixelRatio', docClient: 'documentElement client', scroll: 'scroll',
+    visualViewport: 'VISUAL VIEWPORT', unavailable: 'not available', safeArea: 'safe-area insets', layout: 'LAYOUT', activeClasses: 'active root classes',
+    outerWidth: 'fold-outer device width', outerActive: 'outer-display layout active', outerInactive: 'outer-display layout inactive',
+    portraitRange: 'portrait, 450–500px range', innerLayout: 'fold-inner-landscape', active: 'active', inactive: 'inactive',
+    landscapeRange: 'landscape viewport width {width}px; target range 800–1100px', topbar: 'topbar', main: 'main',
+    currentCard: 'current card', mainComputed: 'main computed', breakpoints: 'BREAKPOINTS', yes: 'YES', no: 'no',
+    copyCard: 'Current card', dealtCard: 'Dealt card', artBy: 'Art created by NRD',
+  },
+  es: {
+    start: 'Iniciar', startTitle: 'Iniciar el juego', restart: 'Reiniciar', restartTitle: 'Reiniciar el juego (R)',
+    faster: 'Más rápido (-1s)', fasterTitle: 'Acelerar (< o coma)', slower: 'Más lento (+1s)', slowerTitle: 'Ralentizar (> o punto)',
+    pause: 'Pausar', resume: 'Continuar', pauseTitle: 'Pausar/continuar (Espacio)', voiceOn: 'Voz: activada', voiceOff: 'Voz: desactivada', voiceTitle: 'Activar/desactivar nombres hablados',
+    languageButton: 'English', languageLabel: 'Cambiar idioma a inglés', speed: 'Velocidad: {seconds}s / carta', speedInitial: 'Velocidad: 5s / carta',
+    remaining: 'Restantes: {count}', remainingInitial: 'Restantes: —', cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
+    loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...', deckError: '❌ Error al cargar la lista. Revisa la consola.',
+    noCards: '❌ No se encontraron cartas en /Cards/cards.json', dealt: 'Repartidas (en orden):', debug: 'Depuración', debugTitle: 'Diagnóstico de pantalla',
+    debugSubtitle: 'Medidas actuales del dispositivo y diseño', closeDebug: 'Cerrar diagnóstico', debugStatus: 'Se actualiza al cambiar tamaño u orientación.',
+    copyDebug: 'Copiar diagnóstico', copied: 'Diagnóstico copiado.', copyUnavailable: 'Portapapeles no disponible; selecciona el texto para copiar.',
+    version: 'Versión', captured: 'Capturado', displayMode: 'Modo de visualización', standalone: 'PWA independiente', browser: 'navegador/pestaña',
+    orientation: 'Orientación', windowScreen: 'VENTANA / PANTALLA', inner: 'interior', outer: 'exterior', screen: 'pantalla', avail: 'disponible',
+    cssViewport: 'Ventana gráfica CSS', pixelRatio: 'Relación de píxeles', docClient: 'Área visible del documento', scroll: 'desplazamiento',
+    visualViewport: 'VENTANA GRÁFICA VISUAL', unavailable: 'no disponible', safeArea: 'márgenes seguros', layout: 'DISEÑO', activeClasses: 'Clases activas',
+    outerWidth: 'Ancho de pantalla exterior', outerActive: 'diseño de pantalla exterior activo', outerInactive: 'diseño de pantalla exterior inactivo',
+    portraitRange: 'vertical, rango 450–500px', innerLayout: 'Pantalla interior horizontal', active: 'activo', inactive: 'inactivo',
+    landscapeRange: 'ancho horizontal {width}px; rango objetivo 800–1100px', topbar: 'barra superior', main: 'área principal',
+    currentCard: 'carta actual', mainComputed: 'estilo calculado del área principal', breakpoints: 'PUNTOS DE CORTE', yes: 'SÍ', no: 'no',
+    copyCard: 'Carta actual', dealtCard: 'Carta repartida', artBy: 'Arte creado por NRD',
+  },
+};
+
+function t(key, values = {}) {
+  let text = TEXT[language][key] || TEXT.en[key] || key;
+  for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, value);
+  return text;
+}
+
+function applyLanguage() {
+  document.documentElement.lang = language;
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(element => {
+    element.title = t(element.dataset.i18nTitle);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+    element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel));
+  });
+  document.querySelectorAll('[data-language-key]').forEach(element => {
+    element.textContent = t(element.dataset.languageKey, { count: element.dataset.count || '' });
+  });
+  btnLanguage.textContent = t('languageButton');
+  btnLanguage.setAttribute('aria-label', t('languageLabel'));
+  btnPause.textContent = paused ? t('resume') : t('pause');
+  updateLabels();
+  updateSpeechButton();
+  if (debugOutput) refreshDebugView();
+}
+
+btnLanguage.addEventListener('click', () => {
+  language = language === 'en' ? 'es' : 'en';
+  try { localStorage.setItem(LANGUAGE_KEY, language); } catch (error) { console.warn('Could not save language preference:', error); }
+  applyLanguage();
+});
 const debugToggle = document.getElementById('debug-toggle');
 const debugPanel = document.getElementById('debug-panel');
 const debugClose = document.getElementById('debug-close');
@@ -94,40 +174,40 @@ function refreshDebugView(){
     '(min-width: 600px) and (max-width: 680px) and (orientation: portrait)',
     '(min-width: 800px) and (max-width: 1100px) and (orientation: landscape)',
   ];
-  const breakpointResults = mediaQueries.map(query => `${window.matchMedia(query).matches ? 'YES' : 'no '} ${query}`).join('\n');
+  const breakpointResults = mediaQueries.map(query => `${window.matchMedia(query).matches ? t('yes') : t('no')} ${query}`).join('\n');
 
   debugOutput.textContent = [
-    `Version: ${document.getElementById('version-counter')?.textContent.trim() || 'unknown'}`,
-    `Captured: ${new Date().toISOString()}`,
-    `Display mode: ${standalone ? 'standalone PWA' : 'browser/tab'}`,
-    `Orientation: ${orientation}`,
+    `${t('version')}: ${document.getElementById('version-counter')?.textContent.trim() || 'unknown'}`,
+    `${t('captured')}: ${new Date().toISOString()}`,
+    `${t('displayMode')}: ${standalone ? t('standalone') : t('browser')}`,
+    `${t('orientation')}: ${orientation}`,
     `User agent: ${navigator.userAgent}`,
     '',
-    'WINDOW / SCREEN',
-    `inner: ${window.innerWidth}×${window.innerHeight}`,
-    `outer: ${window.outerWidth}×${window.outerHeight}`,
-    `screen: ${screen.width}×${screen.height} (avail ${screen.availWidth}×${screen.availHeight})` ,
-    `CSS media-query viewport: ${window.innerWidth}×${window.innerHeight} CSS px`,
-    `devicePixelRatio: ${window.devicePixelRatio}`,
-    `documentElement client: ${root.clientWidth}×${root.clientHeight}`,
-    `scroll: ${window.scrollX}, ${window.scrollY}`,
+    t('windowScreen'),
+    `${t('inner')}: ${window.innerWidth}×${window.innerHeight}`,
+    `${t('outer')}: ${window.outerWidth}×${window.outerHeight}`,
+    `${t('screen')}: ${screen.width}×${screen.height} (${t('avail')} ${screen.availWidth}×${screen.availHeight})` ,
+    `${t('cssViewport')}: ${window.innerWidth}×${window.innerHeight} CSS px`,
+    `${t('pixelRatio')}: ${window.devicePixelRatio}`,
+    `${t('docClient')}: ${root.clientWidth}×${root.clientHeight}`,
+    `${t('scroll')}: ${window.scrollX}, ${window.scrollY}`,
     '',
-    'VISUAL VIEWPORT',
+    t('visualViewport'),
     viewport
       ? `size: ${viewport.width.toFixed(1)}×${viewport.height.toFixed(1)}; offset: ${viewport.offsetLeft.toFixed(1)}, ${viewport.offsetTop.toFixed(1)}; page: ${viewport.pageLeft.toFixed(1)}, ${viewport.pageTop.toFixed(1)}; scale: ${viewport.scale}`
-      : 'not available',
-    `safe-area insets: ${getSafeAreaInsets()}`,
+      : t('unavailable'),
+    `${t('safeArea')}: ${getSafeAreaInsets()}`,
     '',
-    'LAYOUT',
-    `active root classes: ${rootClasses}`,
-    `fold-outer device width: max(screen ${screen.width}px, viewport ${window.innerWidth}px) = ${Math.max(screen.width, window.innerWidth)}px; ${root.classList.contains('fold-outer') ? 'outer-display layout active' : 'outer-display layout inactive'} (portrait, 450–500px range)`,
-    `fold-inner-landscape: ${root.classList.contains('fold-inner-landscape') ? 'active' : 'inactive'} (landscape viewport width ${window.innerWidth}px; target range 800–1100px)`,
-    `topbar: ${getElementMetrics(topbar)}`,
-    `main: ${getElementMetrics(main)}`,
-    `current card: ${getElementMetrics(currentCard)}`,
-    `main computed: display ${main ? getComputedStyle(main).display : 'n/a'}; height ${main ? getComputedStyle(main).height : 'n/a'}`,
+    t('layout'),
+    `${t('activeClasses')}: ${rootClasses}`,
+    `${t('outerWidth')}: max(${t('screen')} ${screen.width}px, viewport ${window.innerWidth}px) = ${Math.max(screen.width, window.innerWidth)}px; ${root.classList.contains('fold-outer') ? t('outerActive') : t('outerInactive')} (${t('portraitRange')})`,
+    `${t('innerLayout')}: ${root.classList.contains('fold-inner-landscape') ? t('active') : t('inactive')} (${t('landscapeRange', { width: window.innerWidth })})`,
+    `${t('topbar')}: ${getElementMetrics(topbar)}`,
+    `${t('main')}: ${getElementMetrics(main)}`,
+    `${t('currentCard')}: ${getElementMetrics(currentCard)}`,
+    `${t('mainComputed')}: display ${main ? getComputedStyle(main).display : 'n/a'}; height ${main ? getComputedStyle(main).height : 'n/a'}`,
     '',
-    'BREAKPOINTS',
+    t('breakpoints'),
     breakpointResults,
   ].join('\n');
 }
@@ -151,9 +231,9 @@ debugPanel.addEventListener('click', event => {
 debugCopy.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(debugOutput.textContent);
-    debugStatus.textContent = 'Diagnostics copied to clipboard.';
+    debugStatus.textContent = t('copied');
   } catch (error) {
-    debugStatus.textContent = 'Clipboard unavailable; select the text above to copy.';
+    debugStatus.textContent = t('copyUnavailable');
   }
 });
 window.addEventListener('resize', refreshDebugView, { passive: true });
@@ -224,8 +304,8 @@ function normalizeCardName(name){
 // Labels
 function updateLabels(){
   const speedSec = (delayMs/1000).toFixed(1);
-  speedLabel.textContent = `Speed: ${speedSec}s / card`;
-  remainingLabel.textContent = `Remaining: ${remaining.length}`;
+  speedLabel.textContent = t('speed', { seconds: speedSec });
+  remainingLabel.textContent = t('remaining', { count: remaining.length });
 }
 
 // Save preferences to localStorage
@@ -303,17 +383,22 @@ function createCardFrame(src, alt = 'Card', showBadge = false){
   if (showBadge) {
     const badge = document.createElement('span');
     badge.className = 'card-badge';
-    badge.textContent = 'Art created by NRD';
+    badge.textContent = t('artBy');
     frame.appendChild(badge);
   }
 
   return frame;
 }
 
+function showPlaceholder(key, values = {}){
+  const countAttribute = values.count === undefined ? '' : ` data-count="${values.count}"`;
+  currentCardEl.innerHTML = `<div class="placeholder" data-language-key="${key}"${countAttribute}>${t(key, values)}</div>`;
+}
+
 // Show card
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
-  currentCardEl.appendChild(createCardFrame(src, 'Current card', true));
+  currentCardEl.appendChild(createCardFrame(src, t('copyCard'), true));
   playCardAudio(src);
 }
 
@@ -344,7 +429,7 @@ function pickSpeechVoice(){
 function updateSpeechButton(){
   if (!btnSpeech) return;
   const isActive = speechEnabled && supportsSpeech();
-  btnSpeech.textContent = isActive ? 'Voice: On' : 'Voice: Off';
+  btnSpeech.textContent = isActive ? t('voiceOn') : t('voiceOff');
   btnSpeech.classList.toggle('is-active', isActive);
   btnSpeech.setAttribute('aria-pressed', String(isActive));
 }
@@ -490,7 +575,7 @@ function speakCardName(src){
 
 // Add to dealt strip
 function appendDealt(src){
-  const frame = createCardFrame(src, 'Dealt card', false);
+  const frame = createCardFrame(src, t('dealtCard'), false);
   frame.dataset.dealtIndex = String(dealt.length - 1);
   dealtStrip.appendChild(frame);
   orderDealtCards();
@@ -543,7 +628,7 @@ function beginGame(){
 
   remaining = [...fullDeck];
   dealt = [];
-  currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
+  showPlaceholder('cardsPlaceholder');
   dealtStrip.innerHTML = '';
   updateLabels();
   startTicker();
@@ -569,12 +654,12 @@ function dealOne(){
 function resetGame(){
   stopTicker();
   paused = false;
-  btnPause.textContent = 'Pause';
+  btnPause.textContent = t('pause');
   btnPause.setAttribute('aria-pressed', false);
 
   remaining = [...fullDeck];
   dealt = [];
-  currentCardEl.innerHTML = '<div class="placeholder">Cards will appear here</div>';
+  showPlaceholder('cardsPlaceholder');
   dealtStrip.innerHTML = '';
   updateLabels();
 }
@@ -587,7 +672,7 @@ btnStart.addEventListener('click', () => {
 btnRestart.addEventListener('click', () => {
   started = false;
   resetGame();
-  currentCardEl.innerHTML = '<div class="placeholder">Press Start to begin</div>';
+  showPlaceholder('startPlaceholder');
   remaining = [...fullDeck];
   dealt = [];
   dealtStrip.innerHTML = '';
@@ -611,7 +696,7 @@ btnSlower.addEventListener('click', () => {
 
 btnPause.addEventListener('click', () => {
   paused = !paused;
-  btnPause.textContent = paused ? 'Resume' : 'Pause';
+  btnPause.textContent = paused ? t('resume') : t('pause');
   btnPause.setAttribute('aria-pressed', paused);
   if (paused) stopTicker();
   else startTicker();
@@ -657,6 +742,7 @@ if (supportsSpeech()) {
 
 restoreSavedVoicePreference();
 btnStart.disabled = false;
+applyLanguage();
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -684,8 +770,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Show loading indicator
-function showLoading(message = 'Loading deck...') {
-  currentCardEl.innerHTML = `<div class="placeholder">${message}</div>`;
+function showLoading(key = 'loading', values = {}) {
+  showPlaceholder(key, values);
 }
 
 // Load cards.json
@@ -698,14 +784,14 @@ async function loadDeckList(){
     return files.map(name => `./Cards/${name}`);
   } catch (err) {
     console.error('[cards] Error loading deck list:', err);
-    showLoading('❌ Error loading deck list. Check console.');
+    showLoading('deckError');
     return [];
   }
 }
 
 // Verify images exist
 function filterExistingImages(urls){
-  showLoading(`Loading ${urls.length} cards...`);
+  showLoading('loadingCount', { count: urls.length });
   return Promise.all(urls.map((src, idx) => new Promise(resolve => {
     const img = new Image();
     img.onload = () => resolve(src);
@@ -725,14 +811,14 @@ function filterExistingImages(urls){
   fullDeck = await filterExistingImages(fullDeck);
 
   if (fullDeck.length === 0) {
-    currentCardEl.innerHTML = '<div class="placeholder">❌ No cards found in /Cards/cards.json</div>';
+    showPlaceholder('noCards');
     updateLabels();
     return;
   }
   remaining = [...fullDeck];
   dealt = [];
   updateLabels();
-  currentCardEl.innerHTML = '<div class="placeholder">Press Start to begin</div>';
+  showPlaceholder('startPlaceholder');
   dealtStrip.innerHTML = '';
   started = false;
   updateSpeechButton();
