@@ -62,29 +62,6 @@ body{
 .btn:focus{ outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .btn:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
 
-.volume-control{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 1px solid rgba(134, 239, 172, .32);
-  border-radius: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.volume-control input{
-  width: 86px;
-  accent-color: var(--accent);
-}
-.volume-control output{
-  min-width: 34px;
-  color: var(--text);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 .status{
   display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
   font-size: 14px; color: var(--muted);
@@ -210,10 +187,6 @@ body{
     min-width: auto;
     padding: 10px 8px;
     font-size: 12px;
-  }
-  .volume-control {
-    flex: 1 1 140px;
-    justify-content: center;
   }
   .status {
     width: 100%;
