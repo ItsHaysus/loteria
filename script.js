@@ -145,7 +145,7 @@ function restoreSavedVoicePreference(){
   }
 }
 
-function createCardFrame(src, alt = 'Card'){
+function createCardFrame(src, alt = 'Card', showBadge = false){
   const frame = document.createElement('div');
   frame.className = 'card-frame';
 
@@ -153,19 +153,22 @@ function createCardFrame(src, alt = 'Card'){
   img.alt = alt;
   img.src = src;
 
-  const badge = document.createElement('span');
-  badge.className = 'card-badge';
-  badge.textContent = 'Art created by NRD';
-
   frame.appendChild(img);
-  frame.appendChild(badge);
+
+  if (showBadge) {
+    const badge = document.createElement('span');
+    badge.className = 'card-badge';
+    badge.textContent = 'Art created by NRD';
+    frame.appendChild(badge);
+  }
+
   return frame;
 }
 
 // Show card
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
-  currentCardEl.appendChild(createCardFrame(src, 'Current card'));
+  currentCardEl.appendChild(createCardFrame(src, 'Current card', true));
   playCardAudio(src);
 }
 
@@ -342,7 +345,7 @@ function speakCardName(src){
 
 // Add to dealt strip
 function appendDealt(src){
-  dealtStrip.appendChild(createCardFrame(src, 'Dealt card'));
+  dealtStrip.appendChild(createCardFrame(src, 'Dealt card', false));
 }
 
 // Stop ticker
