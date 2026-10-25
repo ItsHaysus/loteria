@@ -19,12 +19,7 @@ body{
   min-height: 100dvh;
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  background-color: #10243a;
-  background-image: linear-gradient(180deg, rgba(5, 14, 27, .35), rgba(5, 14, 27, .58)), url("Background/98bc1a2584c73cd3e797d5593be50ceb.jpg");
-  background-position: center top;
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-attachment: fixed;
+  background: #000;
   color: var(--text);
 }
 
