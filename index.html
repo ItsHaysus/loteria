@@ -41,25 +41,7 @@
     </section>
   </main>
 
-  <button id="debug-toggle" class="debug-toggle" type="button" aria-controls="debug-panel" aria-expanded="false" data-i18n="debug">Debug</button>
   <div class="version-counter" id="version-counter" aria-label="Version 1.3.1">1.3.1</div>
-
-  <section id="debug-panel" class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="debug-title" hidden>
-    <div class="debug-dialog">
-      <header class="debug-header">
-        <div>
-          <h2 id="debug-title" data-i18n="debugTitle">Viewport diagnostics</h2>
-          <p data-i18n="debugSubtitle">Live device and layout measurements</p>
-        </div>
-        <button id="debug-close" class="debug-close" type="button" aria-label="Close diagnostics" data-i18n-aria-label="closeDebug">×</button>
-      </header>
-      <pre id="debug-output" class="debug-output" aria-live="polite"></pre>
-      <footer class="debug-footer">
-        <span id="debug-status" role="status" data-i18n="debugStatus">Updates on resize and orientation changes.</span>
-        <button id="debug-copy" class="btn" type="button" data-i18n="copyDebug">Copy diagnostics</button>
-      </footer>
-    </div>
-  </section>
 
   <script src="script.js?v=1.3.1" defer></script>
   <script>

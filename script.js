@@ -29,18 +29,8 @@ const TEXT = {
     languageButton: 'Español', languageLabel: 'Switch language to Spanish', speed: 'Speed: {seconds}s / card', speedInitial: 'Speed: 5s / card',
     remaining: 'Remaining: {count}', remainingInitial: 'Remaining: —', cardsPlaceholder: 'Cards will appear here', startPlaceholder: 'Press Start to begin',
     loading: 'Loading deck...', loadingCount: 'Loading {count} cards...', deckError: '❌ Error loading deck list. Check console.',
-    noCards: '❌ No cards found in /Cards/cards.json', dealt: 'Dealt (in order):', debug: 'Debug', debugTitle: 'Viewport diagnostics',
-    debugSubtitle: 'Live device and layout measurements', closeDebug: 'Close diagnostics', debugStatus: 'Updates on resize and orientation changes.',
-    copyDebug: 'Copy diagnostics', copied: 'Diagnostics copied to clipboard.', copyUnavailable: 'Clipboard unavailable; select the text above to copy.',
-    version: 'Version', captured: 'Captured', displayMode: 'Display mode', standalone: 'standalone PWA', browser: 'browser/tab',
-    orientation: 'Orientation', windowScreen: 'WINDOW / SCREEN', inner: 'inner', outer: 'outer', screen: 'screen', avail: 'avail',
-    cssViewport: 'CSS media-query viewport', pixelRatio: 'devicePixelRatio', docClient: 'documentElement client', scroll: 'scroll',
-    visualViewport: 'VISUAL VIEWPORT', unavailable: 'not available', safeArea: 'safe-area insets', layout: 'LAYOUT', activeClasses: 'active root classes',
-    outerWidth: 'fold-outer device width', outerActive: 'outer-display layout active', outerInactive: 'outer-display layout inactive',
-    portraitRange: 'portrait, 450–500px range', innerLayout: 'fold-inner-landscape', active: 'active', inactive: 'inactive',
-    landscapeRange: 'landscape viewport width {width}px; target range 800–1100px', topbar: 'topbar', main: 'main',
-    currentCard: 'current card', mainComputed: 'main computed', breakpoints: 'BREAKPOINTS', yes: 'YES', no: 'no',
-    copyCard: 'Current card', dealtCard: 'Dealt card', artBy: 'Art created by NRD',
+    noCards: '❌ No cards found in /Cards/cards.json', dealt: 'Dealt (in order):',
+    copyCard: 'Current card', dealtCard: 'Dealt card',
   },
   es: {
     start: 'Iniciar', startTitle: 'Iniciar el juego', restart: 'Reiniciar', restartTitle: 'Reiniciar el juego (R)',
@@ -49,18 +39,8 @@ const TEXT = {
     languageButton: 'English', languageLabel: 'Cambiar idioma a inglés', speed: 'Velocidad: {seconds}s / carta', speedInitial: 'Velocidad: 5s / carta',
     remaining: 'Restantes: {count}', remainingInitial: 'Restantes: —', cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
     loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...', deckError: '❌ Error al cargar la lista. Revisa la consola.',
-    noCards: '❌ No se encontraron cartas en /Cards/cards.json', dealt: 'Repartidas (en orden):', debug: 'Depuración', debugTitle: 'Diagnóstico de pantalla',
-    debugSubtitle: 'Medidas actuales del dispositivo y diseño', closeDebug: 'Cerrar diagnóstico', debugStatus: 'Se actualiza al cambiar tamaño u orientación.',
-    copyDebug: 'Copiar diagnóstico', copied: 'Diagnóstico copiado.', copyUnavailable: 'Portapapeles no disponible; selecciona el texto para copiar.',
-    version: 'Versión', captured: 'Capturado', displayMode: 'Modo de visualización', standalone: 'PWA independiente', browser: 'navegador/pestaña',
-    orientation: 'Orientación', windowScreen: 'VENTANA / PANTALLA', inner: 'interior', outer: 'exterior', screen: 'pantalla', avail: 'disponible',
-    cssViewport: 'Ventana gráfica CSS', pixelRatio: 'Relación de píxeles', docClient: 'Área visible del documento', scroll: 'desplazamiento',
-    visualViewport: 'VENTANA GRÁFICA VISUAL', unavailable: 'no disponible', safeArea: 'márgenes seguros', layout: 'DISEÑO', activeClasses: 'Clases activas',
-    outerWidth: 'Ancho de pantalla exterior', outerActive: 'diseño de pantalla exterior activo', outerInactive: 'diseño de pantalla exterior inactivo',
-    portraitRange: 'vertical, rango 450–500px', innerLayout: 'Pantalla interior horizontal', active: 'activo', inactive: 'inactivo',
-    landscapeRange: 'ancho horizontal {width}px; rango objetivo 800–1100px', topbar: 'barra superior', main: 'área principal',
-    currentCard: 'carta actual', mainComputed: 'estilo calculado del área principal', breakpoints: 'PUNTOS DE CORTE', yes: 'SÍ', no: 'no',
-    copyCard: 'Carta actual', dealtCard: 'Carta repartida', artBy: 'Arte creado por NRD',
+    noCards: '❌ No se encontraron cartas en /Cards/cards.json', dealt: 'Repartidas (en orden):',
+    copyCard: 'Carta actual', dealtCard: 'Carta repartida',
   },
 };
 
@@ -89,7 +69,6 @@ function applyLanguage() {
   btnPause.textContent = paused ? t('resume') : t('pause');
   updateLabels();
   updateSpeechButton();
-  if (debugOutput) refreshDebugView();
 }
 
 btnLanguage.addEventListener('click', () => {
@@ -97,13 +76,6 @@ btnLanguage.addEventListener('click', () => {
   try { localStorage.setItem(LANGUAGE_KEY, language); } catch (error) { console.warn('Could not save language preference:', error); }
   applyLanguage();
 });
-const debugToggle = document.getElementById('debug-toggle');
-const debugPanel = document.getElementById('debug-panel');
-const debugClose = document.getElementById('debug-close');
-const debugOutput = document.getElementById('debug-output');
-const debugCopy = document.getElementById('debug-copy');
-const debugStatus = document.getElementById('debug-status');
-
 const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
@@ -134,119 +106,12 @@ function updateFoldLayout(){
     !landscape && width >= 600 && width <= 680
   );
   orderDealtCards();
-  refreshDebugView();
 }
 
 window.addEventListener('resize', updateFoldLayout, { passive: true });
 window.addEventListener('orientationchange', updateFoldLayout, { passive: true });
 window.visualViewport?.addEventListener('resize', updateFoldLayout, { passive: true });
 updateFoldLayout();
-
-function getElementMetrics(element){
-  if (!element) return 'not found';
-  const rect = element.getBoundingClientRect();
-  return `${Math.round(rect.width)}×${Math.round(rect.height)} at (${Math.round(rect.left)}, ${Math.round(rect.top)})`;
-}
-
-function getSafeAreaInsets(){
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
-  document.body.appendChild(probe);
-  const styles = getComputedStyle(probe);
-  const insets = `top ${styles.paddingTop}, right ${styles.paddingRight}, bottom ${styles.paddingBottom}, left ${styles.paddingLeft}`;
-  probe.remove();
-  return insets;
-}
-
-function refreshDebugView(){
-  if (!debugOutput) return;
-  const viewport = window.visualViewport;
-  const root = document.documentElement;
-  const main = document.querySelector('.main');
-  const topbar = document.querySelector('.topbar');
-  const currentCard = document.getElementById('current-card');
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const orientation = screen.orientation?.type || (window.innerWidth >= window.innerHeight ? 'landscape' : 'portrait');
-  const rootClasses = root.className || '(none)';
-  const mediaQueries = [
-    '(max-width: 480px)',
-    '(min-width: 450px) and (max-width: 500px) and (orientation: portrait)',
-    '(min-width: 600px) and (max-width: 680px) and (orientation: portrait)',
-    '(min-width: 800px) and (max-width: 1100px) and (orientation: landscape)',
-  ];
-  const breakpointResults = mediaQueries.map(query => `${window.matchMedia(query).matches ? t('yes') : t('no')} ${query}`).join('\n');
-
-  debugOutput.textContent = [
-    `${t('version')}: ${document.getElementById('version-counter')?.textContent.trim() || 'unknown'}`,
-    `${t('captured')}: ${new Date().toISOString()}`,
-    `${t('displayMode')}: ${standalone ? t('standalone') : t('browser')}`,
-    `${t('orientation')}: ${orientation}`,
-    `User agent: ${navigator.userAgent}`,
-    '',
-    t('windowScreen'),
-    `${t('inner')}: ${window.innerWidth}×${window.innerHeight}`,
-    `${t('outer')}: ${window.outerWidth}×${window.outerHeight}`,
-    `${t('screen')}: ${screen.width}×${screen.height} (${t('avail')} ${screen.availWidth}×${screen.availHeight})` ,
-    `${t('cssViewport')}: ${window.innerWidth}×${window.innerHeight} CSS px`,
-    `${t('pixelRatio')}: ${window.devicePixelRatio}`,
-    `${t('docClient')}: ${root.clientWidth}×${root.clientHeight}`,
-    `${t('scroll')}: ${window.scrollX}, ${window.scrollY}`,
-    '',
-    t('visualViewport'),
-    viewport
-      ? `size: ${viewport.width.toFixed(1)}×${viewport.height.toFixed(1)}; offset: ${viewport.offsetLeft.toFixed(1)}, ${viewport.offsetTop.toFixed(1)}; page: ${viewport.pageLeft.toFixed(1)}, ${viewport.pageTop.toFixed(1)}; scale: ${viewport.scale}`
-      : t('unavailable'),
-    `${t('safeArea')}: ${getSafeAreaInsets()}`,
-    '',
-    t('layout'),
-    `${t('activeClasses')}: ${rootClasses}`,
-    `${t('outerWidth')}: max(${t('screen')} ${screen.width}px, viewport ${window.innerWidth}px) = ${Math.max(screen.width, window.innerWidth)}px; ${root.classList.contains('fold-outer') ? t('outerActive') : t('outerInactive')} (${t('portraitRange')})`,
-    `${t('innerLayout')}: ${root.classList.contains('fold-inner-landscape') ? t('active') : t('inactive')} (${t('landscapeRange', { width: window.innerWidth })})`,
-    `${t('topbar')}: ${getElementMetrics(topbar)}`,
-    `${t('main')}: ${getElementMetrics(main)}`,
-    `${t('currentCard')}: ${getElementMetrics(currentCard)}`,
-    `${t('mainComputed')}: display ${main ? getComputedStyle(main).display : 'n/a'}; height ${main ? getComputedStyle(main).height : 'n/a'}`,
-    '',
-    t('breakpoints'),
-    breakpointResults,
-  ].join('\n');
-}
-
-function setDebugOpen(open){
-  debugPanel.hidden = !open;
-  debugToggle.setAttribute('aria-expanded', String(open));
-  if (open) {
-    refreshDebugView();
-    debugClose.focus();
-  } else {
-    debugToggle.focus();
-  }
-}
-
-debugToggle.addEventListener('click', () => setDebugOpen(true));
-debugClose.addEventListener('click', () => setDebugOpen(false));
-debugPanel.addEventListener('click', event => {
-  if (event.target === debugPanel) setDebugOpen(false);
-});
-debugCopy.addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(debugOutput.textContent);
-    debugStatus.textContent = t('copied');
-  } catch (error) {
-    debugStatus.textContent = t('copyUnavailable');
-  }
-});
-window.addEventListener('resize', refreshDebugView, { passive: true });
-window.addEventListener('orientationchange', refreshDebugView, { passive: true });
-window.addEventListener('pageshow', refreshDebugView, { passive: true });
-window.visualViewport?.addEventListener('resize', refreshDebugView, { passive: true });
-window.visualViewport?.addEventListener('scroll', refreshDebugView, { passive: true });
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !debugPanel.hidden) setDebugOpen(false);
-  if (event.key.toLowerCase() === 'd' && !['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
-    setDebugOpen(debugPanel.hidden);
-  }
-});
 
 // State
 let fullDeck = [];     // array of image URLs
@@ -338,7 +203,7 @@ function restoreSavedVoicePreference(){
   }
 }
 
-function createCardFrame(src, alt = 'Card', showBadge = false){
+function createCardFrame(src, alt = 'Card'){
   const frame = document.createElement('div');
   frame.className = 'card-frame';
 
@@ -347,13 +212,6 @@ function createCardFrame(src, alt = 'Card', showBadge = false){
   img.src = src;
 
   frame.appendChild(img);
-
-  if (showBadge) {
-    const badge = document.createElement('span');
-    badge.className = 'card-badge';
-    badge.textContent = t('artBy');
-    frame.appendChild(badge);
-  }
 
   return frame;
 }
@@ -366,7 +224,7 @@ function showPlaceholder(key, values = {}){
 // Show card
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
-  currentCardEl.appendChild(createCardFrame(src, t('copyCard'), true));
+  currentCardEl.appendChild(createCardFrame(src, t('copyCard')));
   playCardAudio(src);
 }
 
