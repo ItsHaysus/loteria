@@ -13,27 +13,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/loteria/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/loteria/icons/loteria-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
-    },
-    {
-      "src": "/loteria/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
     }
   ],
   "categories": ["games", "entertainment"],
-  "screenshots": [
-    {
-      "src": "/loteria/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "description": "Lotería card dealer application"
-    }
-  ],
   "prefer_related_applications": false,
   "shortcuts": [
     {
