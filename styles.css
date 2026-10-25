@@ -77,6 +77,23 @@ body{
   min-height: calc(100dvh - 110px);
 }
 
+.version-counter{
+  position: fixed;
+  z-index: 30;
+  left: calc(8px + var(--safe-left));
+  bottom: calc(8px + var(--safe-bottom));
+  padding: 4px 7px;
+  border: 1px solid rgba(134, 239, 172, .35);
+  border-radius: 8px;
+  background: rgba(4, 45, 32, .88);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: .04em;
+  pointer-events: none;
+  user-select: none;
+}
+
 .current-card{
   flex: 1 1 auto;
   min-height: 0;
@@ -718,6 +735,9 @@ body{
 }
 
 /* Print styles */
+@media print {
+  .version-counter { display: none; }
+}
 @media print {
   .topbar,
   .dealt-section {
