@@ -278,6 +278,7 @@ body{
   .controls {
     position: fixed;
     z-index: 20;
+    left: auto;
     right: calc(8px + var(--safe-right));
     bottom: calc(12px + var(--safe-bottom));
     width: 100px;
