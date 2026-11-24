@@ -348,6 +348,11 @@ body{
     overflow-y: hidden;
     padding-bottom: 4px;
   }
+  :root.pwa-standalone:not(.fold-outer) .dealt-strip .card-frame {
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+  }
 }
 
 @media (max-width: 380px) and (orientation: portrait) {

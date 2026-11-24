@@ -96,6 +96,7 @@ try {
       document.documentElement.style.setProperty('--safe-right', '${device.safeRight || 0}px');
       document.getElementById('btn-start').click();
       dealOne();
+      dealOne();
       document.getElementById('btn-pause').click();
     `);
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -117,6 +118,7 @@ try {
         classes: document.documentElement.className,
         currentCard: rect(document.getElementById('current-card')),
         dealt: rect(document.querySelector('.dealt-section')),
+        dealtCards: [...document.querySelectorAll('.dealt-strip .card-frame')].map(rect),
         buttons: buttons.map(button => ({ id: button.id, ...rect(button) })),
         smallTargets: buttons.filter(button => {
           const box = button.getBoundingClientRect();
@@ -132,7 +134,8 @@ try {
     const overflow = metrics.document.width > device.width || metrics.document.height > device.height;
     const bounds = metrics.currentCard.bottom > device.height + 0.5 || metrics.dealt.bottom > device.height + 0.5;
     const pass = !overflow && !bounds && metrics.smallTargets.length === 0 &&
-      !metrics.aiVisible && metrics.imageLoaded && metrics.remaining.includes('53');
+      !metrics.aiVisible && metrics.imageLoaded && metrics.remaining.includes('52') &&
+      (device.width > 440 || metrics.dealtCards.every(card => card.width < 100));
     results.push({ device: device.name, pass, overflow, bounds, ...metrics });
   }
 } finally {
