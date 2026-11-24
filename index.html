@@ -47,7 +47,7 @@
   <script src="ai-clue.js?v=1.4.1" defer></script>
   <script src="script.js?v=1.4.1" defer></script>
   <script>
-    // Register the service worker (required for PWA on GitHub Pages)
+    // Register the service worker for the HTTPS-hosted PWA.
     if ('serviceWorker' in navigator) {
       let refreshingForUpdate = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
