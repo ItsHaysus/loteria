@@ -5,6 +5,7 @@
   "observability": {
     "enabled": true
   },
+  "previews": {},
   "assets": {
     "directory": ".",
     "html_handling": "auto-trailing-slash"
