@@ -8,12 +8,15 @@
 
 const DEFAULT_DELAY_MS = 5000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
+const DEFAULT_SPEECH_ENABLED = true;
 const STORAGE_KEY = 'loteria-preferences';
 const AI_API_URL = window.LOTERIA_AI_API_URL || '';
 const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
   || new URLSearchParams(window.location.search).get('ai') === 'dev';
 const AI_REQUEST_TIMEOUT_MS = 3500;
 const CLUE_DISPLAY_MS = 1800;
+const AUDIO_READY_TIMEOUT_MS = 2500;
+const AUDIO_PRELOAD_CONCURRENCY = 4;
 
 const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches
   || window.navigator.standalone === true;
@@ -133,10 +136,12 @@ let dealt = [];        // dealt history
 let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
-let speechEnabled = false;
+let speechEnabled = DEFAULT_SPEECH_ENABLED;
 let speechVoice = null;
 let voiceUnlocked = false;
 let audioPlayer = null;
+let audioRequestId = 0;
+const audioPreloadByUrl = new Map();
 let started = false;
 let cardMetadataByFile = new Map();
 let aiCluesEnabled = false;
@@ -200,7 +205,7 @@ function restoreSavedVoicePreference(){
 
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) {
-    speechEnabled = false;
+    speechEnabled = DEFAULT_SPEECH_ENABLED;
     updateSpeechButton();
     return;
   }
@@ -317,6 +322,63 @@ function getAudioNameCandidates(name){
   return [...new Set([normalized, titleCaseName])];
 }
 
+function getAudioUrl(name){
+  return `./audio/${encodeURIComponent(name)}.opus`;
+}
+
+function preloadAudioUrl(url){
+  if (!audioPreloadByUrl.has(url)) {
+    const request = fetch(url, { cache: 'force-cache' })
+      .then(response => {
+        if (!response.ok) audioPreloadByUrl.delete(url);
+        return response.ok;
+      })
+      .catch(error => {
+        audioPreloadByUrl.delete(url);
+        console.warn(`[audio] Could not preload ${url}:`, error);
+        return false;
+      });
+    audioPreloadByUrl.set(url, request);
+  }
+  return audioPreloadByUrl.get(url);
+}
+
+async function preloadAudioLibrary(cardSources){
+  const names = ['start', ...cardSources.map(getCardNameFromSrc).filter(Boolean)];
+  const urls = [...new Set(names.flatMap(getAudioNameCandidates).map(getAudioUrl))];
+  let nextIndex = 0;
+
+  async function worker(){
+    while (nextIndex < urls.length) {
+      const url = urls[nextIndex++];
+      await preloadAudioUrl(url);
+    }
+  }
+
+  await Promise.all(Array.from(
+    { length: Math.min(AUDIO_PRELOAD_CONCURRENCY, urls.length) },
+    () => worker()
+  ));
+}
+
+function waitForAudioReady(player){
+  if (player.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
+
+  return new Promise(resolve => {
+    const finish = ready => {
+      window.clearTimeout(timeoutId);
+      player.removeEventListener('canplay', onCanPlay);
+      player.removeEventListener('error', onError);
+      resolve(ready);
+    };
+    const onCanPlay = () => finish(true);
+    const onError = () => finish(false);
+    const timeoutId = window.setTimeout(() => finish(false), AUDIO_READY_TIMEOUT_MS);
+    player.addEventListener('canplay', onCanPlay, { once: true });
+    player.addEventListener('error', onError, { once: true });
+  });
+}
+
 async function playAudioName(name){
   if (!audioPlayer) {
     audioPlayer = new Audio();
@@ -325,11 +387,18 @@ async function playAudioName(name){
 
   audioPlayer.pause();
   audioPlayer.volume = 1;
+  const requestId = ++audioRequestId;
   const candidates = getAudioNameCandidates(name);
   for (const candidate of candidates) {
+    const url = getAudioUrl(candidate);
     try {
-      audioPlayer.src = `./audio/${encodeURIComponent(candidate)}.opus`;
+      const available = await preloadAudioUrl(url);
+      if (!available || requestId !== audioRequestId) return false;
+      audioPlayer.src = url;
       audioPlayer.currentTime = 0;
+      audioPlayer.load();
+      const ready = await waitForAudioReady(audioPlayer);
+      if (!ready || requestId !== audioRequestId) continue;
       await audioPlayer.play();
       return true;
     } catch (error) {
@@ -646,6 +715,7 @@ btnSpeech.addEventListener('click', () => {
 
   speechEnabled = !speechEnabled;
   if (speechEnabled) {
+    void preloadAudioLibrary(fullDeck);
     if (typeof window.speechSynthesis.resume === 'function') {
       window.speechSynthesis.resume();
     }
@@ -655,6 +725,7 @@ btnSpeech.addEventListener('click', () => {
       if (!audioPlayed) speakTestPhrase();
     });
   } else {
+    audioRequestId += 1;
     if (audioPlayer) {
       audioPlayer.pause();
       audioPlayer.currentTime = 0;
@@ -778,6 +849,7 @@ function filterExistingImages(urls){
     return;
   }
   remaining = [...fullDeck];
+  if (speechEnabled) void preloadAudioLibrary(fullDeck);
   dealt = [];
   updateLabels();
   showPlaceholder('startPlaceholder');

@@ -1,7 +1,7 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v22';
+const CACHE_NAME = 'card-dealer-v24';
 const APP_SHELL = [
   './',
   './index.html',
@@ -39,6 +39,12 @@ self.addEventListener('fetch', (event) => {
   // Runtime cache for cards
   if (url.pathname.includes('/Cards/')) {
     event.respondWith(staleWhileRevalidate(event.request));
+    return;
+  }
+
+  // Recorded calls are immutable assets; cache them after the first warm-up request.
+  if (url.pathname.includes('/audio/')) {
+    event.respondWith(cacheFirst(event.request));
     return;
   }
 
@@ -82,4 +88,14 @@ async function staleWhileRevalidate(request) {
     return response;
   }).catch(() => cached);
   return cached || networkFetch;
+}
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  const response = await fetch(request);
+  if (response && response.ok) await cache.put(request, response.clone());
+  return response;
 }
