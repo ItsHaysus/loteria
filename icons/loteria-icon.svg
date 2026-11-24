@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Lotería card">
+  <rect width="512" height="512" rx="96" fill="#062b20"/>
+  <rect x="104" y="52" width="304" height="408" rx="28" fill="#fef3c7" stroke="#86efac" stroke-width="16"/>
+  <path d="M256 112l37 75 83 12-60 58 14 82-74-39-74 39 14-82-60-58 83-12z" fill="#dc2626" stroke="#92400e" stroke-width="10" stroke-linejoin="round"/>
+  <circle cx="256" cy="384" r="28" fill="#0b5138"/>
+</svg>

@@ -9,6 +9,15 @@
 const DEFAULT_DELAY_MS = 5000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
 const STORAGE_KEY = 'loteria-preferences';
+const AI_API_URL = window.LOTERIA_AI_API_URL || '';
+const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
+  || new URLSearchParams(window.location.search).get('ai') === 'dev';
+const AI_REQUEST_TIMEOUT_MS = 3500;
+const CLUE_DISPLAY_MS = 1800;
+
+const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
 
 // UI elements
 const btnStart   = document.getElementById('btn-start');
@@ -17,6 +26,7 @@ const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
 const btnPause   = document.getElementById('btn-pause');
 const btnSpeech  = document.getElementById('btn-speech');
+const btnAi      = document.getElementById('btn-ai');
 const btnLanguage = document.getElementById('btn-language');
 const LANGUAGE_KEY = 'loteria-language';
 let language = 'en';
@@ -26,6 +36,7 @@ const TEXT = {
     start: 'Start', startTitle: 'Start the game', restart: 'Restart', restartTitle: 'Restart game (R)',
     faster: 'Faster (-1s)', fasterTitle: 'Speed up (< or comma)', slower: 'Slower (+1s)', slowerTitle: 'Slow down (> or period)',
     pause: 'Pause', resume: 'Resume', pauseTitle: 'Pause/Resume (Space)', voiceOn: 'Voice: On', voiceOff: 'Voice: Off', voiceTitle: 'Enable/disable spoken card names',
+    aiOn: 'AI clues: On', aiOff: 'AI clues: Off', aiTitle: 'Enable optional AI clues', aiSource: 'AI clue', fallbackSource: 'Built-in clue',
     languageButton: 'Español', languageLabel: 'Switch language to Spanish', speed: 'Speed: {seconds}s / card', speedInitial: 'Speed: 5s / card',
     remaining: 'Remaining: {count}', remainingInitial: 'Remaining: —', cardsPlaceholder: 'Cards will appear here', startPlaceholder: 'Press Start to begin',
     loading: 'Loading deck...', loadingCount: 'Loading {count} cards...', deckError: '❌ Error loading deck list. Check console.',
@@ -36,6 +47,7 @@ const TEXT = {
     start: 'Iniciar', startTitle: 'Iniciar el juego', restart: 'Reiniciar', restartTitle: 'Reiniciar el juego (R)',
     faster: 'Más rápido (-1s)', fasterTitle: 'Acelerar (< o coma)', slower: 'Más lento (+1s)', slowerTitle: 'Ralentizar (> o punto)',
     pause: 'Pausar', resume: 'Continuar', pauseTitle: 'Pausar/continuar (Espacio)', voiceOn: 'Voz: activada', voiceOff: 'Voz: desactivada', voiceTitle: 'Activar/desactivar nombres hablados',
+    aiOn: 'Pistas IA: activadas', aiOff: 'Pistas IA: desactivadas', aiTitle: 'Activar pistas opcionales con IA', aiSource: 'Pista IA', fallbackSource: 'Pista incluida',
     languageButton: 'English', languageLabel: 'Cambiar idioma a inglés', speed: 'Velocidad: {seconds}s / carta', speedInitial: 'Velocidad: 5s / carta',
     remaining: 'Restantes: {count}', remainingInitial: 'Restantes: —', cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
     loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...', deckError: '❌ Error al cargar la lista. Revisa la consola.',
@@ -69,6 +81,7 @@ function applyLanguage() {
   btnPause.textContent = paused ? t('resume') : t('pause');
   updateLabels();
   updateSpeechButton();
+  updateAiButton();
 }
 
 btnLanguage.addEventListener('click', () => {
@@ -125,6 +138,11 @@ let speechVoice = null;
 let voiceUnlocked = false;
 let audioPlayer = null;
 let started = false;
+let cardMetadataByFile = new Map();
+let aiCluesEnabled = false;
+let cluePending = false;
+let clueRequestId = 0;
+let clueController = null;
 
 function normalizeCardName(name){
   const raw = String(name || '').trim();
@@ -221,6 +239,19 @@ function showPlaceholder(key, values = {}){
   currentCardEl.innerHTML = `<div class="placeholder" data-language-key="${key}"${countAttribute}>${t(key, values)}</div>`;
 }
 
+function showClue(clue, source){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'clue-card';
+  const text = document.createElement('p');
+  text.className = 'clue-text';
+  text.textContent = clue;
+  const label = document.createElement('span');
+  label.className = 'clue-source';
+  label.textContent = source === 'model' ? t('aiSource') : t('fallbackSource');
+  wrapper.append(text, label);
+  currentCardEl.replaceChildren(wrapper);
+}
+
 // Show card
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
@@ -228,15 +259,17 @@ function showCurrentCard(src){
   playCardAudio(src);
 }
 
-function getCardNameFromSrc(src){
+function getFileNameFromSrc(src){
   try {
     const url = new URL(src, window.location.href);
-    const fileName = url.pathname.split('/').pop() || '';
-    const decodedName = decodeURIComponent(fileName);
-    return normalizeCardName(decodedName);
+    return decodeURIComponent(url.pathname.split('/').pop() || '');
   } catch (error) {
     return '';
   }
+}
+
+function getCardNameFromSrc(src){
+  return normalizeCardName(getFileNameFromSrc(src));
 }
 
 function supportsSpeech(){
@@ -257,6 +290,21 @@ function updateSpeechButton(){
   btnSpeech.textContent = isActive ? t('voiceOn') : t('voiceOff');
   btnSpeech.classList.toggle('is-active', isActive);
   btnSpeech.setAttribute('aria-pressed', String(isActive));
+}
+
+function updateAiButton(){
+  if (!btnAi) return;
+  btnAi.hidden = !AI_CLUES_AVAILABLE;
+  if (!AI_CLUES_AVAILABLE) {
+    aiCluesEnabled = false;
+    btnAi.disabled = true;
+    btnAi.setAttribute('aria-pressed', 'false');
+    return;
+  }
+  btnAi.textContent = aiCluesEnabled ? t('aiOn') : t('aiOff');
+  btnAi.classList.toggle('is-active', aiCluesEnabled);
+  btnAi.setAttribute('aria-pressed', String(aiCluesEnabled));
+  btnAi.disabled = cluePending;
 }
 
 function titleCaseAudioName(name){
@@ -427,9 +475,32 @@ function stopTicker(){
 // Start ticker
 function startTicker(){
   stopTicker();
-  if (!paused && remaining.length > 0) {
+  if (paused || remaining.length === 0 || cluePending) return;
+  if (aiCluesEnabled) {
+    timerId = window.setTimeout(() => {
+      timerId = null;
+      dealOne();
+    }, delayMs);
+  } else {
     timerId = setInterval(dealOne, delayMs);
   }
+}
+
+function cancelPendingClue(){
+  clueRequestId += 1;
+  clueController?.abort();
+  clueController = null;
+  cluePending = false;
+  updateAiButton();
+}
+
+function completeAiDraw(requestId, card){
+  if (requestId !== clueRequestId || !started) return;
+  showCurrentCard(card);
+  cluePending = false;
+  clueController = null;
+  updateAiButton();
+  if (!paused && remaining.length > 0) startTicker();
 }
 
 function beginGame(){
@@ -461,7 +532,7 @@ function beginGame(){
 
 // Deal card
 function dealOne(){
-  if (paused || remaining.length === 0) return;
+  if (paused || remaining.length === 0 || cluePending) return;
   const idx = Math.floor(Math.random() * remaining.length);
   const [card] = remaining.splice(idx, 1);
   if (dealt.length > 0) {
@@ -469,10 +540,45 @@ function dealOne(){
   }
   dealt.push(card);
 
-  showCurrentCard(card);
   updateLabels();
 
-  if (remaining.length === 0) {
+  if (!aiCluesEnabled) {
+    showCurrentCard(card);
+  } else {
+    const metadata = cardMetadataByFile.get(getFileNameFromSrc(card));
+    if (!metadata || !window.LoteriaAi) {
+      aiCluesEnabled = false;
+      updateAiButton();
+      showCurrentCard(card);
+      if (remaining.length > 0) startTicker();
+    } else {
+      cluePending = true;
+      updateAiButton();
+      const requestId = ++clueRequestId;
+      clueController?.abort();
+      clueController = new AbortController();
+      window.LoteriaAi.requestClue({
+        cardId: metadata.id,
+        cardName: metadata.name,
+        fallbackClue: metadata.builtInClue,
+        apiUrl: AI_API_URL,
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
+        signal: clueController.signal,
+      }).then(result => {
+        if (requestId !== clueRequestId || !started) return;
+        showClue(result.clue, result.source);
+        window.setTimeout(() => completeAiDraw(requestId, card), CLUE_DISPLAY_MS);
+      }).catch(error => {
+        if (requestId === clueRequestId && !clueController?.signal.aborted) {
+          console.warn('[ai-clue] Unexpected request failure:', error);
+          showClue(metadata.builtInClue, 'fallback');
+          window.setTimeout(() => completeAiDraw(requestId, card), CLUE_DISPLAY_MS);
+        }
+      });
+    }
+  }
+
+  if (remaining.length === 0 || aiCluesEnabled) {
     stopTicker();
   }
 }
@@ -480,6 +586,7 @@ function dealOne(){
 // Reset game
 function resetGame(){
   stopTicker();
+  cancelPendingClue();
   paused = false;
   btnPause.textContent = t('pause');
   btnPause.setAttribute('aria-pressed', false);
@@ -560,6 +667,13 @@ btnSpeech.addEventListener('click', () => {
   savePreferences();
 });
 
+btnAi?.addEventListener('click', () => {
+  if (!AI_CLUES_AVAILABLE) return;
+  aiCluesEnabled = !aiCluesEnabled;
+  updateAiButton();
+  if (started) startTicker();
+});
+
 if (supportsSpeech()) {
   window.speechSynthesis.onvoiceschanged = () => {
     speechVoice = pickSpeechVoice();
@@ -616,6 +730,26 @@ async function loadDeckList(){
   }
 }
 
+async function loadCardMetadata(){
+  if (!AI_CLUES_AVAILABLE) {
+    cardMetadataByFile = new Map();
+    return;
+  }
+
+  try {
+    const response = await fetch('./Cards/card-metadata.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}: card-metadata.json not found`);
+    const cards = await response.json();
+    if (!Array.isArray(cards)) throw new Error('card-metadata.json must be an array');
+    cardMetadataByFile = new Map(cards.map(card => [card.file, card]));
+  } catch (error) {
+    console.error('[ai-clue] Could not load fallback clues:', error);
+    cardMetadataByFile = new Map();
+    aiCluesEnabled = false;
+    btnAi.disabled = true;
+  }
+}
+
 // Verify images exist
 function filterExistingImages(urls){
   showLoading('loadingCount', { count: urls.length });
@@ -634,6 +768,7 @@ function filterExistingImages(urls){
 (async function init(){
   loadPreferences();
   restoreSavedVoicePreference();
+  await loadCardMetadata();
   fullDeck = await loadDeckList();
   fullDeck = await filterExistingImages(fullDeck);
 
@@ -649,4 +784,5 @@ function filterExistingImages(urls){
   dealtStrip.innerHTML = '';
   started = false;
   updateSpeechButton();
+  updateAiButton();
 })();

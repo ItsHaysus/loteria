@@ -132,6 +132,28 @@ body{
   font-size: 14px;
 }
 
+.clue-card{
+  display: grid;
+  gap: 14px;
+  max-width: 620px;
+  padding: 32px;
+  text-align: center;
+}
+.clue-text{
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(24px, 5vw, 42px);
+  font-weight: 650;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.clue-source{
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 .dealt-section{
   margin-top: 18px;
   margin-bottom: 0;
@@ -250,34 +272,72 @@ body{
   }
 }
 
-/* Standalone iOS PWA: keep the header crisp and reserve space for dealt cards. */
-@media (display-mode: standalone) and (max-width: 480px) {
-  :root:not(.fold-outer) .topbar {
+/* Installed iPhone PWA: fit the controls, current card, and dealt strip inside the safe viewport. */
+@media (max-width: 480px) {
+  :root.pwa-standalone:not(.fold-outer),
+  :root.pwa-standalone:not(.fold-outer) body {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :root.pwa-standalone:not(.fold-outer) body {
+    display: flex;
+    flex-direction: column;
+  }
+  :root.pwa-standalone:not(.fold-outer) .topbar {
+    position: relative;
+    flex: 0 0 auto;
     background: #062b20;
     backdrop-filter: none;
+    gap: 8px;
+    padding: calc(8px + var(--safe-top)) calc(8px + var(--safe-right)) 8px calc(8px + var(--safe-left));
   }
-  :root:not(.fold-outer) .main {
+  :root.pwa-standalone:not(.fold-outer) .controls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  :root.pwa-standalone:not(.fold-outer) .btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 4px;
+    line-height: 1.15;
+  }
+  :root.pwa-standalone:not(.fold-outer) .status {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  :root.pwa-standalone:not(.fold-outer) .status span {
+    white-space: nowrap;
+  }
+  :root.pwa-standalone:not(.fold-outer) .main {
+    flex: 1 1 0;
     min-height: 0;
-    height: calc(100dvh - 120px);
+    height: auto;
+    margin: 8px auto 0;
+    padding-right: calc(8px + var(--safe-right));
+    padding-left: calc(8px + var(--safe-left));
     padding-bottom: calc(8px + var(--safe-bottom));
   }
-  :root:not(.fold-outer) .current-card {
+  :root.pwa-standalone:not(.fold-outer) .current-card {
     flex: 1 1 0;
     min-height: 0;
   }
-  :root:not(.fold-outer) .dealt-section {
+  :root.pwa-standalone:not(.fold-outer) .dealt-section {
     display: flex;
-    flex: 0 0 112px;
+    flex: 0 0 100px;
     flex-direction: column;
-    min-height: 112px;
+    min-height: 100px;
     margin-top: 10px;
     overflow: hidden;
   }
-  :root:not(.fold-outer) .dealt-section h2 {
+  :root.pwa-standalone:not(.fold-outer) .dealt-section h2 {
     flex: 0 0 auto;
     margin: 0 0 6px;
   }
-  :root:not(.fold-outer) .dealt-strip {
+  :root.pwa-standalone:not(.fold-outer) .dealt-strip {
     display: flex;
     flex: 1 1 0;
     min-height: 0;
@@ -289,7 +349,7 @@ body{
 }
 
 @media (max-width: 380px) and (orientation: portrait) {
-  .main {
+  :root:not(.pwa-standalone) .main {
     min-height: 0;
     height: calc(100dvh - 134px);
   }
@@ -686,7 +746,8 @@ body{
   gap: 4px;
 }
 :root.fold-inner-landscape .controls .btn {
-  min-width: 0;
+  min-width: 44px;
+  min-height: 44px;
   padding: 8px 7px;
   font-size: 11px;
 }
