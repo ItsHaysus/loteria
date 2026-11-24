@@ -2,6 +2,19 @@
 
 The normal application is an installable PWA. Docker, Kubernetes, and AI are retained as developer tooling and are inactive at the normal app URL.
 
+## Production hosting on Cloudflare
+
+Production is a Cloudflare Worker named `loteria` serving static assets. Cloudflare should connect to the `ItsHaysus/loteria` GitHub repository with `master` as its production branch. There is no build step; the deploy command is `npx wrangler deploy` from the repository root.
+
+`wrangler.jsonc` defines the Worker, and `.assetsignore` restricts uploads to the PWA shell, card art, recorded audio, backgrounds, and icons. Docker, Kubernetes, tests, and API source remain in the repository but are not published as web assets.
+
+For a one-time manual deployment from a development machine with Node.js installed:
+
+```sh
+npx wrangler login
+npx wrangler deploy
+```
+
 ## Install on iPhone
 
 Serve the checkout over HTTPS (or use localhost for desktop development), open it in Safari, then choose **Share → Add to Home Screen → Add**. Launch Lotería from its Home Screen icon so it runs in standalone mode. Check portrait and landscape, draw several cards, scroll the dealt-card strip, and confirm recorded calls play after enabling Voice.

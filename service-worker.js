@@ -1,5 +1,5 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
-// Works on GitHub Pages (HTTPS required)
+// Works on HTTPS static hosting, including Cloudflare Workers.
 
 const CACHE_NAME = 'card-dealer-v22';
 const APP_SHELL = [

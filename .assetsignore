@@ -1,0 +1,16 @@
+*
+!index.html
+!styles.css
+!script.js
+!ai-clue.js
+!service-worker.js
+!manifest.json
+!manifest.webmanifest
+!Cards/
+!Cards/**
+!audio/
+!audio/**
+!Background/
+!Background/**
+!icons/
+!icons/**
