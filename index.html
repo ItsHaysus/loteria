@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/loteria-icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=1.4.1" />
+  <link rel="stylesheet" href="styles.css?v=1.4.2" />
 </head>
 <body>
   <header class="topbar">
@@ -21,7 +21,7 @@
       <button id="btn-faster" class="btn" data-i18n="faster" data-i18n-title="fasterTitle">Faster (-1s)</button>
       <button id="btn-slower" class="btn" data-i18n="slower" data-i18n-title="slowerTitle">Slower (+1s)</button>
       <button id="btn-pause" class="btn" aria-pressed="false" data-i18n="pause" data-i18n-title="pauseTitle">Pause</button>
-      <button id="btn-speech" class="btn" aria-pressed="false" data-i18n="voiceOff" data-i18n-title="voiceTitle">Voice: Off</button>
+      <button id="btn-speech" class="btn" aria-pressed="true" data-i18n="voiceOn" data-i18n-title="voiceTitle">Voice: On</button>
       <button id="btn-ai" class="btn" aria-pressed="false" data-i18n="aiOff" data-i18n-title="aiTitle" hidden>AI clues: Off</button>
       <button id="btn-language" class="btn" type="button" aria-label="Cambiar idioma">Español</button>
     </div>
@@ -42,10 +42,10 @@
     </section>
   </main>
 
-  <div class="version-counter" id="version-counter" aria-label="Version 1.4.1">1.4.1</div>
+  <div class="version-counter" id="version-counter" aria-label="Version 1.4.2">1.4.2</div>
 
-  <script src="ai-clue.js?v=1.4.1" defer></script>
-  <script src="script.js?v=1.4.1" defer></script>
+  <script src="ai-clue.js?v=1.4.2" defer></script>
+  <script src="script.js?v=1.4.2" defer></script>
   <script>
     // Register the service worker for the HTTPS-hosted PWA.
     if ('serviceWorker' in navigator) {
@@ -59,7 +59,7 @@
       window.addEventListener('load', async () => {
         try {
           // Version the worker URL to bypass stale iOS Home Screen app caches.
-          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.1', {
+          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.2', {
             updateViaCache: 'none',
           });
           const checkForUpdate = () => registration.update().catch(console.error);

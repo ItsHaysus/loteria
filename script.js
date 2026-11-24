@@ -8,6 +8,7 @@
 
 const DEFAULT_DELAY_MS = 5000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
+const DEFAULT_SPEECH_ENABLED = true;
 const STORAGE_KEY = 'loteria-preferences';
 const AI_API_URL = window.LOTERIA_AI_API_URL || '';
 const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
@@ -133,7 +134,7 @@ let dealt = [];        // dealt history
 let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
-let speechEnabled = false;
+let speechEnabled = DEFAULT_SPEECH_ENABLED;
 let speechVoice = null;
 let voiceUnlocked = false;
 let audioPlayer = null;
@@ -200,7 +201,7 @@ function restoreSavedVoicePreference(){
 
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) {
-    speechEnabled = false;
+    speechEnabled = DEFAULT_SPEECH_ENABLED;
     updateSpeechButton();
     return;
   }

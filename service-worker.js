@@ -1,7 +1,7 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v22';
+const CACHE_NAME = 'card-dealer-v23';
 const APP_SHELL = [
   './',
   './index.html',
