@@ -314,6 +314,8 @@ body{
   }
   :root.pwa-standalone:not(.fold-outer) .main {
     flex: 1 1 0;
+    width: 100%;
+    max-width: none;
     min-height: 0;
     height: auto;
     margin: 8px auto 0;
