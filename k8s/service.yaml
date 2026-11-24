@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loteria
+  labels:
+    app.kubernetes.io/name: loteria
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: loteria
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

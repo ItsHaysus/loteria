@@ -1,14 +1,17 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on GitHub Pages (HTTPS required)
 
-const CACHE_NAME = 'card-dealer-v20';
+const CACHE_NAME = 'card-dealer-v22';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
   './script.js',
+  './ai-clue.js',
   './manifest.webmanifest',
-  './icons/loteria-icon.svg'
+  './icons/loteria-icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 // Install: cache app shell
