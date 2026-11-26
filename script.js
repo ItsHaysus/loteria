@@ -31,9 +31,10 @@ const btnSlower  = document.getElementById('btn-slower');
 const btnAi      = document.getElementById('btn-ai');
 const TEXT = {
   start: 'Iniciar', pause: 'Pausar', resume: 'Continuar',
+  paused: 'Pausado', finished: 'Mazo terminado',
   aiOn: 'Pistas de IA: activadas', aiOff: 'Pistas de IA: desactivadas',
   aiSource: 'Pista de IA', fallbackSource: 'Pista incluida',
-  speed: 'Velocidad: {seconds}s / carta', remaining: 'Restantes: {count}',
+  speed: '{seconds} s / carta', remaining: 'Restantes: {count}',
   cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
   loading: 'Cargando el mazo...',
   deckError: 'Error al cargar la lista de cartas.', noCards: 'No se encontraron cartas.',
@@ -48,7 +49,8 @@ function t(key, values = {}) {
 
 const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
-const currentCardEl  = document.getElementById('current-card');
+const cardContent    = document.getElementById('card-content');
+const gameStatus     = document.getElementById('game-status');
 const dealtStrip     = document.getElementById('dealt-strip');
 
 function updateFoldLayout(){
@@ -109,7 +111,7 @@ function normalizeCardName(name){
 
 // Labels
 function updateLabels(){
-  const speedSec = (delayMs/1000).toFixed(1);
+  const speedSec = (delayMs / 1000).toLocaleString('es', { maximumFractionDigits: 1 });
   speedLabel.textContent = t('speed', { seconds: speedSec });
   remainingLabel.textContent = t('remaining', { count: remaining.length });
 }
@@ -154,7 +156,7 @@ function createCardFrame(src, alt = 'Carta'){
 }
 
 function showPlaceholder(key, values = {}){
-  currentCardEl.innerHTML = `<div class="placeholder">${t(key, values)}</div>`;
+  cardContent.innerHTML = `<div class="placeholder">${t(key, values)}</div>`;
 }
 
 function showClue(clue, source){
@@ -167,13 +169,13 @@ function showClue(clue, source){
   label.className = 'clue-source';
   label.textContent = source === 'model' ? t('aiSource') : t('fallbackSource');
   wrapper.append(text, label);
-  currentCardEl.replaceChildren(wrapper);
+  cardContent.replaceChildren(wrapper);
 }
 
 // Show card
 function showCurrentCard(src){
-  currentCardEl.innerHTML = '';
-  currentCardEl.appendChild(createCardFrame(src, t('copyCard')));
+  cardContent.innerHTML = '';
+  cardContent.appendChild(createCardFrame(src, t('copyCard')));
   const cardName = getCardNameFromSrc(src);
   if (cardName) announce(cardName);
   startDealDelay();
@@ -505,6 +507,8 @@ function dealOne(){
 function updatePlayButton(){
   const label = started ? (paused ? 'resume' : 'pause') : 'start';
   btnStart.textContent = t(label);
+  const status = paused ? t('paused') : !started && dealt.length > 0 ? t('finished') : '';
+  if (gameStatus.textContent !== status) gameStatus.textContent = status;
 }
 
 function restartGame(){

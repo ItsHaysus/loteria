@@ -133,13 +133,17 @@ async function verifyCallerPlayback() {
   await waitFor('remaining.length === 52', 'Dealing did not resume after the card call ended');
   const controlStates = await execute(`
     const control = document.getElementById('btn-start');
+    const status = document.getElementById('game-status');
+    const card = document.querySelector('#current-card img');
     const playing = control.textContent;
     control.click();
     const paused = control.textContent;
+    const pausedStatus = status.textContent;
+    const keptCard = card === document.querySelector('#current-card img');
     control.click();
-    return [document.documentElement.lang, playing, paused, control.textContent];
+    return [document.documentElement.lang, playing, paused, control.textContent, pausedStatus, keptCard, status.textContent];
   `);
-  if (controlStates.join(',') !== 'es,Pausar,Continuar,Pausar') {
+  if (controlStates.join(',') !== 'es,Pausar,Continuar,Pausar,Pausado,true,') {
     throw new Error(`Unexpected play control states ${controlStates.join(',')}`);
   }
   await execute("document.getElementById('btn-restart').click()");
@@ -148,6 +152,17 @@ async function verifyCallerPlayback() {
     'Restart did not start a new round with the opener',
   );
   await waitFor('remaining.length === 53', 'Restart did not resume dealing');
+  await execute(`
+    stopCaller();
+    remaining.splice(1);
+    dealOne();
+    window.lastCard = document.querySelector('#current-card img');
+  `);
+  await waitFor("document.getElementById('game-status').textContent === 'Mazo terminado'",
+    'The completed round did not show its status');
+  if (!await execute("return lastCard && lastCard === document.querySelector('#current-card img')")) {
+    throw new Error('Finishing the deck replaced the last card');
+  }
   await execute("localStorage.removeItem('loteria-preferences'); localStorage.removeItem('loteria-language')");
   console.log('Caller playback passed');
 }
@@ -205,6 +220,7 @@ try {
         document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
         classes: document.documentElement.className,
         currentCard: rect(document.getElementById('current-card')),
+        cardImage: image ? rect(image) : null,
         dealt: rect(document.querySelector('.dealt-section')),
         dealtCards: [...document.querySelectorAll('.dealt-strip .card-frame')].map(rect),
         buttons: buttons.map(button => ({ id: button.id, ...rect(button) })),
@@ -221,8 +237,13 @@ try {
     await Deno.writeFile(`${outputDir}/${device.name}.png`, Uint8Array.from(atob(screenshot), character => character.charCodeAt(0)));
     const overflow = metrics.document.width > device.width || metrics.document.height > device.height;
     const bounds = metrics.currentCard.bottom > device.height + 0.5 || metrics.dealt.bottom > device.height + 0.5;
+    const compactLandscape = device.width > device.height && device.height <= 520;
+    const cardFits = metrics.cardImage &&
+      metrics.cardImage.y >= metrics.currentCard.y &&
+      metrics.cardImage.bottom <= metrics.currentCard.bottom + 0.5;
     const pass = !overflow && !bounds && metrics.smallTargets.length === 0 &&
       !metrics.aiVisible && metrics.imageLoaded && metrics.remaining.includes('52') &&
+      (!compactLandscape || (cardFits && metrics.dealt.height <= 72)) &&
       (device.width > 440 || metrics.dealtCards.every(card => card.width < 100));
     results.push({ device: device.name, pass, overflow, bounds, ...metrics });
   }
