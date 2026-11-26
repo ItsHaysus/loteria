@@ -39,7 +39,7 @@ body{
   border-bottom: 1px solid rgba(134, 239, 172, .4);
 }
 .controls{
-  display: flex; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .btn{
   background: linear-gradient(135deg, #0b5138, #0a3d2d);
@@ -51,7 +51,8 @@ body{
   font-size: 13px;
   font-weight: 500;
   transition: transform .05s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
-  min-width: 80px;
+  min-width: 44px;
+  min-height: 44px;
 }
 .btn.is-active{
   background: linear-gradient(135deg, rgba(74, 222, 128, .42), rgba(20, 83, 45, .82));
@@ -61,6 +62,44 @@ body{
 .btn:active{ transform: translateY(1px); }
 .btn:focus{ outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .btn:focus-visible{ box-shadow: 0 0 0 3px var(--ring); }
+
+.btn.btn-primary{
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+.btn.btn-primary:hover{ background: #bbf7d0; }
+.btn:disabled{ cursor: default; opacity: .6; }
+.btn.btn-restart{
+  margin-inline-start: 6px;
+  background: transparent;
+}
+.btn.btn-restart:hover{ background: var(--panel); }
+
+.speed-controls{
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 3px;
+  border-radius: 12px;
+  background: var(--bg);
+  min-width: 0;
+}
+.speed-controls .btn{
+  min-width: 44px;
+  padding-inline: 4px;
+  font-size: 18px;
+  line-height: 1;
+}
+#speed-label{
+  text-align: center;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 
 .status{
   display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
@@ -105,6 +144,33 @@ body{
   overflow: hidden;
   padding: 0;
 }
+.current-card{
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+.card-content{
+  grid-row: 2;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  justify-self: stretch;
+  min-height: 0;
+  min-width: 0;
+  text-align: center;
+}
+.game-status{
+  grid-row: 1;
+  justify-self: stretch;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 650;
+}
+.game-status:not(:empty){
+  padding: 4px 8px;
+  background: var(--panel);
+  color: var(--accent);
+}
+
 .card-frame{
   position: relative;
   display: inline-flex;
@@ -234,6 +300,7 @@ body{
 }
 
 @media (max-width: 480px) {
+  .version-counter { display: none; }
   .topbar {
     padding: 8px;
   }
@@ -295,7 +362,7 @@ body{
   }
   :root.pwa-standalone:not(.fold-outer) .controls {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     gap: 6px;
   }
   :root.pwa-standalone:not(.fold-outer) .btn {
@@ -304,6 +371,12 @@ body{
     min-height: 44px;
     padding: 6px 4px;
     line-height: 1.15;
+  }
+  :root.pwa-standalone:not(.fold-outer) .speed-controls .btn {
+    min-width: 44px;
+  }
+  :root.pwa-standalone:not(.fold-outer) .btn-restart {
+    width: calc(100% - 6px);
   }
   :root.pwa-standalone:not(.fold-outer) .status {
     flex-wrap: nowrap;
@@ -673,10 +746,12 @@ body{
   box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
   backdrop-filter: blur(10px);
 }
-:root.fold-outer .controls #btn-start { order: 1; }
-:root.fold-outer .controls #btn-restart { order: 2; }
-:root.fold-outer .controls #btn-faster { order: 3; }
-:root.fold-outer .controls #btn-slower { order: 4; }
+:root.fold-outer .speed-controls {
+  grid-template-columns: 1fr;
+  padding: 4px;
+}
+:root.fold-outer #speed-label { grid-row: 1; }
+:root.fold-outer .btn-restart { margin: 4px 0 0; }
 :root.fold-outer .status {
   width: auto;
   flex-direction: row;
@@ -833,6 +908,43 @@ body{
   width: auto;
   height: 84px;
   max-height: 84px;
+}
+
+/* Short landscape screens keep the card and history inside the safe viewport. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .version-counter { display: none; }
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+  }
+  .topbar {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex: 0 0 auto;
+    gap: 8px;
+    padding: calc(4px + var(--safe-top)) calc(8px + var(--safe-right)) 4px calc(8px + var(--safe-left));
+  }
+  .controls { justify-content: flex-start; }
+  .controls > .btn { flex: 0 0 auto; }
+  .status { white-space: nowrap; }
+  .main {
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 0 auto;
+    padding: 6px calc(8px + var(--safe-right)) calc(4px + var(--safe-bottom)) calc(8px + var(--safe-left));
+  }
+  .current-card { flex: 1 1 0; min-height: 0; }
+  .card-content > .card-frame { width: 100%; min-height: 0; }
+  .card-content > .card-frame img { height: 100%; max-height: 100%; }
+  .clue-card { padding: 12px; }
+  .dealt-section { margin-top: 4px; min-width: 0; }
+  .dealt-section h2 { margin: 0 0 3px; font-size: 12px; }
+  .dealt-strip { padding-bottom: 0; }
+  .dealt-strip .card-frame { width: auto; height: auto; }
+  .dealt-strip img { height: 44px; }
 }
 
 /* Print styles */

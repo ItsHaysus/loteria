@@ -11,26 +11,31 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/loteria-icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=1.4.8" />
+  <link rel="stylesheet" href="styles.css?v=1.4.9" />
 </head>
 <body>
   <header class="topbar">
     <div class="controls">
-      <button id="btn-start" class="btn" title="Iniciar, pausar o continuar (Espacio)" disabled>Iniciar</button>
-      <button id="btn-restart" class="btn" title="Reiniciar el juego (R)" disabled>Reiniciar</button>
-      <button id="btn-faster" class="btn" title="Acelerar (&lt; o coma)">Más rápido (-1s)</button>
-      <button id="btn-slower" class="btn" title="Ralentizar (&gt; o punto)">Más lento (+1s)</button>
+      <button id="btn-start" class="btn btn-primary" title="Iniciar, pausar o continuar (Espacio)" disabled>Iniciar</button>
+      <div class="speed-controls" role="group" aria-label="Velocidad">
+        <button id="btn-faster" class="btn" aria-label="Más rápido, un segundo menos" title="Más rápido (&lt; o coma)">−</button>
+        <span id="speed-label" aria-live="polite">5 s / carta</span>
+        <button id="btn-slower" class="btn" aria-label="Más lento, un segundo más" title="Más lento (&gt; o punto)">+</button>
+      </div>
+      <button id="btn-restart" class="btn btn-restart" title="Reiniciar el juego (R)" disabled>Reiniciar</button>
       <button id="btn-ai" class="btn" aria-pressed="false" title="Activar pistas opcionales de IA" hidden>Pistas de IA: desactivadas</button>
     </div>
     <div class="status">
-      <span id="speed-label" aria-live="polite">Velocidad: 5s / carta</span>
       <span id="remaining-label" aria-live="polite">Restantes: —</span>
     </div>
   </header>
 
   <main class="main">
-    <div id="current-card" class="current-card" aria-live="polite">
-      <div class="placeholder">Las cartas aparecerán aquí</div>
+    <div id="current-card" class="current-card">
+      <div id="game-status" class="game-status" role="status"></div>
+      <div id="card-content" class="card-content" aria-live="polite">
+        <div class="placeholder">Las cartas aparecerán aquí</div>
+      </div>
     </div>
 
     <section class="dealt-section">
@@ -39,10 +44,10 @@
     </section>
   </main>
 
-  <div class="version-counter" id="version-counter" aria-label="Versión 1.4.8">1.4.8</div>
+  <div class="version-counter" id="version-counter" aria-label="Versión 1.4.9">1.4.9</div>
 
   <script src="ai-clue.js?v=1.4.4" defer></script>
-  <script src="script.js?v=1.4.8" defer></script>
+  <script src="script.js?v=1.4.9" defer></script>
   <script>
     // Register the service worker for the HTTPS-hosted PWA.
     if ('serviceWorker' in navigator) {
@@ -56,7 +61,7 @@
       window.addEventListener('load', async () => {
         try {
           // Version the worker URL to bypass stale iOS Home Screen app caches.
-          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.8', {
+          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.9', {
             updateViaCache: 'none',
           });
           const checkForUpdate = () => registration.update().catch(console.error);
