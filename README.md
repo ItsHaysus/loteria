@@ -52,7 +52,13 @@ curl -fsS -o /dev/null http://localhost:8080/audio/El%20%C3%81rbol.mp3
 
 In the browser, click Iniciar and check that the cards appear and recorded calls play. Try pausing, resuming, changing speed, and restarting.
 
-The bundled MP3 calls were generated with the Mexican Spanish [Piper Claude voice](https://huggingface.co/rhasspy/piper-voices/blob/5ec43b186ef915a195d3ddbcfd9916e76c503c3f/es/es_MX/claude/high/MODEL_CARD). The deal speed sets the minimum spacing between cards and adjusts the caller's pace. The opener and each card call finish before the next deal.
+The bundled MP3 calls use an original synthetic Mexican Spanish caller. [Qwen3-TTS VoiceDesign](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign) generated the reference voice, and [Qwen3-TTS Base](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) used that synthetic reference across the deck. Both ran locally. The app plays the finished files and waits for each call to finish before the next deal.
+
+The [CONADE guide to traditional Mexican games](https://historico.conade.gob.mx/eventos/autoctonos2015/paginas/autoctonos_libro.pdf) documents callers using verses that lead into the card name. The [traditional game demonstration](https://www.youtube.com/watch?v=e782OmumlyA) gives an example of the opening formula. Lotería keeps its short opener and card names, with the delivery modeled after a pregón. The generation prompt was:
+
+> Voz de un hombre adulto de México, acento mexicano del centro del país, un cantador de lotería en una reunión de familia. Barítono cálido y resonante, sonrisa en la voz. Proyecta con alegría para que lo oiga toda la mesa, sin forzar ni gritar. Ritmo de pregón natural, con un leve ascenso en «Corre y se va con» como invitación a escuchar lo que sigue. Haz una pausa entre cartas; da énfasis a la sílaba tónica y cierra el nombre con una caída breve y segura. Dicción clara, vocales naturales, sin alargar en exceso. Habla, no cantes melodías. Solo voz, sin música, sin efectos ni ambiente.
+
+The synthetic reference was “¡Corre y se va con…! ¡El gallo! ¡La sandía! ¡El violonchelo! ¡Las jaras!” The finished files are mono MP3s at 24 kHz with short pauses at the edges.
 
 ## Retained developer tooling
 

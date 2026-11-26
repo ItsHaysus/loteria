@@ -66,7 +66,7 @@
   </main>
 
   <script src="ai-clue.js?v=1.4.4" defer></script>
-  <script src="script.js?v=1.5.1" defer></script>
+  <script src="script.js?v=1.5.2" defer></script>
   <script>
     // Register the service worker for the HTTPS-hosted PWA.
     if ('serviceWorker' in navigator) {
@@ -80,7 +80,7 @@
       window.addEventListener('load', async () => {
         try {
           // Version the worker URL to bypass stale iOS Home Screen app caches.
-          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.5.1', {
+          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.5.2', {
             updateViaCache: 'none',
           });
           const checkForUpdate = () => registration.update().catch(console.error);
