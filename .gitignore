@@ -8,3 +8,7 @@
 # .NET build output
 bin/
 obj/
+
+/node_modules/
+/android-web/
+/android-assets/
