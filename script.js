@@ -15,8 +15,9 @@ const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
   || new URLSearchParams(window.location.search).get('ai') === 'dev';
 const AI_REQUEST_TIMEOUT_MS = 3500;
 const CLUE_DISPLAY_MS = 1800;
-const AUDIO_READY_TIMEOUT_MS = 2500;
+const CALLER_START_TIMEOUT_MS = 5000;
 const AUDIO_PRELOAD_CONCURRENCY = 4;
+const INTRO_CALL = 'Corre y se va con';
 
 const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches
   || window.navigator.standalone === true;
@@ -136,11 +137,11 @@ let dealt = [];        // dealt history
 let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
+let nextDealAt = 0;
 let speechEnabled = DEFAULT_SPEECH_ENABLED;
 let speechVoice = null;
-let voiceUnlocked = false;
 let audioPlayer = null;
-let audioRequestId = 0;
+let callerController = null;
 const audioPreloadByUrl = new Map();
 let started = false;
 let cardMetadataByFile = new Map();
@@ -182,7 +183,7 @@ function loadPreferences(){
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const { delayMs: savedDelay, speechEnabled: savedSpeech } = JSON.parse(saved);
-      if (savedDelay >= MIN_DELAY_MS) {
+      if (Number.isFinite(savedDelay) && savedDelay >= MIN_DELAY_MS) {
         delayMs = savedDelay;
       }
       if (typeof savedSpeech === 'boolean') {
@@ -194,36 +195,6 @@ function loadPreferences(){
   }
 
   updateSpeechButton();
-}
-
-function restoreSavedVoicePreference(){
-  if (!supportsSpeech()) {
-    speechEnabled = false;
-    updateSpeechButton();
-    return;
-  }
-
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) {
-    speechEnabled = DEFAULT_SPEECH_ENABLED;
-    updateSpeechButton();
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(saved);
-    if (typeof parsed.speechEnabled === 'boolean') {
-      speechEnabled = parsed.speechEnabled;
-      updateSpeechButton();
-      if (speechEnabled) {
-        speechVoice = pickSpeechVoice();
-      }
-    }
-  } catch (e) {
-    console.warn('Could not restore speech preference:', e);
-    speechEnabled = false;
-    updateSpeechButton();
-  }
 }
 
 function createCardFrame(src, alt = 'Card'){
@@ -261,7 +232,9 @@ function showClue(clue, source){
 function showCurrentCard(src){
   currentCardEl.innerHTML = '';
   currentCardEl.appendChild(createCardFrame(src, t('copyCard')));
-  playCardAudio(src);
+  const cardName = getCardNameFromSrc(src);
+  if (cardName) announce(cardName);
+  startDealDelay();
 }
 
 function getFileNameFromSrc(src){
@@ -282,16 +255,16 @@ function supportsSpeech(){
 }
 
 function pickSpeechVoice(){
-  if (!supportsSpeech()) return null;
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(voice => /^es-MX$/i.test(voice.lang))
-    || voices.find(voice => /^es(-|$)/i.test(voice.lang));
-  return preferred || null;
+  const spanishVoices = window.speechSynthesis.getVoices().filter(voice => /^es([-_]|$)/i.test(voice.lang));
+  const mexicanVoices = spanishVoices.filter(voice => /^es[-_]MX$/i.test(voice.lang));
+  const isPremium = voice => /\b(premium|enhanced|natural|neural)\b/i.test(voice.name);
+  return mexicanVoices.find(isPremium) || mexicanVoices[0]
+    || spanishVoices.find(isPremium) || spanishVoices[0] || null;
 }
 
 function updateSpeechButton(){
   if (!btnSpeech) return;
-  const isActive = speechEnabled && supportsSpeech();
+  const isActive = speechEnabled;
   btnSpeech.textContent = isActive ? t('voiceOn') : t('voiceOff');
   btnSpeech.classList.toggle('is-active', isActive);
   btnSpeech.setAttribute('aria-pressed', String(isActive));
@@ -312,18 +285,8 @@ function updateAiButton(){
   btnAi.disabled = cluePending;
 }
 
-function titleCaseAudioName(name){
-  return name.replace(/\b[a-záéíóúñ]/gi, letter => letter.toUpperCase());
-}
-
-function getAudioNameCandidates(name){
-  const normalized = normalizeCardName(name);
-  const titleCaseName = titleCaseAudioName(normalized);
-  return [...new Set([normalized, titleCaseName])];
-}
-
 function getAudioUrl(name){
-  return `./audio/${encodeURIComponent(name)}.opus`;
+  return `./audio/${encodeURIComponent(name)}.mp3`;
 }
 
 function preloadAudioUrl(url){
@@ -345,7 +308,7 @@ function preloadAudioUrl(url){
 
 async function preloadAudioLibrary(cardSources){
   const names = ['start', ...cardSources.map(getCardNameFromSrc).filter(Boolean)];
-  const urls = [...new Set(names.flatMap(getAudioNameCandidates).map(getAudioUrl))];
+  const urls = names.map(getAudioUrl);
   let nextIndex = 0;
 
   async function worker(){
@@ -361,64 +324,48 @@ async function preloadAudioLibrary(cardSources){
   ));
 }
 
-function waitForAudioReady(player){
-  if (player.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
-
-  return new Promise(resolve => {
-    const finish = ready => {
-      window.clearTimeout(timeoutId);
-      player.removeEventListener('canplay', onCanPlay);
-      player.removeEventListener('error', onError);
-      resolve(ready);
-    };
-    const onCanPlay = () => finish(true);
-    const onError = () => finish(false);
-    const timeoutId = window.setTimeout(() => finish(false), AUDIO_READY_TIMEOUT_MS);
-    player.addEventListener('canplay', onCanPlay, { once: true });
-    player.addEventListener('error', onError, { once: true });
-  });
+function getCallerRate(){
+  return Math.max(0.85, 1 + (DEFAULT_DELAY_MS - delayMs) / 10000);
 }
 
-async function playAudioName(name){
+function updateCallerRate(){
+  if (!audioPlayer) return;
+  const rate = getCallerRate();
+  audioPlayer.defaultPlaybackRate = rate;
+  audioPlayer.playbackRate = rate;
+}
+
+function playRecordedCall(name, signal){
   if (!audioPlayer) {
     audioPlayer = new Audio();
-    audioPlayer.preload = 'auto';
+    audioPlayer.preservesPitch = true;
   }
+  const player = audioPlayer;
+  player.src = getAudioUrl(name);
+  updateCallerRate();
 
-  audioPlayer.pause();
-  audioPlayer.volume = 1;
-  const requestId = ++audioRequestId;
-  const candidates = getAudioNameCandidates(name);
-  for (const candidate of candidates) {
-    const url = getAudioUrl(candidate);
-    try {
-      const available = await preloadAudioUrl(url);
-      if (!available || requestId !== audioRequestId) return false;
-      audioPlayer.src = url;
-      audioPlayer.currentTime = 0;
-      audioPlayer.load();
-      const ready = await waitForAudioReady(audioPlayer);
-      if (!ready || requestId !== audioRequestId) continue;
-      await audioPlayer.play();
-      return true;
-    } catch (error) {
-      audioPlayer.pause();
+  return new Promise(resolve => {
+    let settled = false;
+    const finished = () => finish(true);
+    const failed = () => finish(false);
+    const timeoutId = window.setTimeout(failed, CALLER_START_TIMEOUT_MS);
+
+    function finish(played){
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      player.removeEventListener('ended', finished);
+      player.removeEventListener('error', failed);
+      signal.removeEventListener('abort', failed);
+      if (!played) player.pause();
+      resolve(played);
     }
-  }
 
-  return false;
-}
-
-function playCardAudio(src){
-  if (!speechEnabled) return;
-
-  const cardName = getCardNameFromSrc(src);
-  if (!cardName) return;
-
-  playAudioName(cardName).then(audioPlayed => {
-    if (!audioPlayed) {
-      speakCardName(src);
-    }
+    player.addEventListener('ended', finished);
+    player.addEventListener('error', failed);
+    signal.addEventListener('abort', failed);
+    // Call play directly from the Start gesture so Safari enables this player for later cards.
+    player.play().then(() => window.clearTimeout(timeoutId), failed);
   });
 }
 
@@ -428,91 +375,65 @@ function unlockVoiceForSafari(){
   const unlockUtterance = new SpeechSynthesisUtterance('');
   unlockUtterance.lang = 'es-MX';
   unlockUtterance.volume = 0;
-  unlockUtterance.rate = 1;
-  unlockUtterance.pitch = 1;
-
-  window.speechSynthesis.cancel();
   window.speechSynthesis.resume();
   window.speechSynthesis.speak(unlockUtterance);
-  voiceUnlocked = true;
 }
 
-function speakIntroPhrase(){
-  if (!supportsSpeech()) return;
+function speakCall(text, signal){
+  if (!supportsSpeech()) return Promise.resolve();
 
-  const introUtterance = new SpeechSynthesisUtterance('Corre y se va con');
-  introUtterance.lang = 'es-MX';
-  introUtterance.rate = 0.9;
-  introUtterance.pitch = 1;
-  introUtterance.volume = 1;
+  const synthesis = window.speechSynthesis;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = speechVoice?.lang || 'es-MX';
+  utterance.rate = getCallerRate();
+  if (speechVoice) utterance.voice = speechVoice;
 
-  if (speechVoice) {
-    introUtterance.voice = speechVoice;
-    introUtterance.lang = speechVoice.lang;
-  }
+  return new Promise(resolve => {
+    const timeoutId = window.setTimeout(cancel, CALLER_START_TIMEOUT_MS);
 
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    window.speechSynthesis.speak(introUtterance);
-  }, 80);
-}
-
-function speakTestPhrase(){
-  if (!speechEnabled || !supportsSpeech()) return;
-
-  const testUtterance = new SpeechSynthesisUtterance('Prueba');
-  testUtterance.lang = 'es-MX';
-  testUtterance.rate = 0.9;
-  testUtterance.pitch = 1;
-  testUtterance.volume = 1;
-
-  if (speechVoice) {
-    testUtterance.voice = speechVoice;
-    testUtterance.lang = speechVoice.lang;
-  }
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    if (speechEnabled) {
-      window.speechSynthesis.speak(testUtterance);
+    function finish(){
+      window.clearTimeout(timeoutId);
+      signal.removeEventListener('abort', cancel);
+      utterance.onstart = utterance.onend = utterance.onerror = null;
+      resolve();
     }
-  }, 60);
+
+    function cancel(){
+      finish();
+      synthesis.cancel();
+    }
+
+    utterance.onstart = () => window.clearTimeout(timeoutId);
+    utterance.onend = finish;
+    utterance.onerror = finish;
+    signal.addEventListener('abort', cancel);
+    synthesis.speak(utterance);
+  });
 }
 
-function speakCardName(src){
-  if (!speechEnabled || !supportsSpeech()) return;
+function announce(name, spokenText = name){
+  if (!speechEnabled || callerController) return;
 
-  if (!voiceUnlocked) {
-    unlockVoiceForSafari();
-  }
+  const controller = new AbortController();
+  const { signal } = controller;
+  callerController = controller;
+  stopTicker();
+  playRecordedCall(name, signal)
+    .then(played => {
+      if (!played && !signal.aborted) return speakCall(spokenText, signal);
+    })
+    .catch(error => console.warn('[audio] Could not announce call:', error))
+    .finally(() => {
+      if (callerController !== controller) return;
+      callerController = null;
+      startTicker();
+    });
+}
 
-  const spokenText = getCardNameFromSrc(src);
-  if (!spokenText) return;
-
-  const utterance = new SpeechSynthesisUtterance(spokenText);
-  utterance.lang = 'es-MX';
-  utterance.rate = 0.9;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-
-  if (!speechVoice) {
-    speechVoice = pickSpeechVoice();
-  }
-
-  if (speechVoice) {
-    utterance.voice = speechVoice;
-    utterance.lang = speechVoice.lang;
-  }
-
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.resume();
-  window.setTimeout(() => {
-    if (speechEnabled) {
-      window.speechSynthesis.speak(utterance);
-    }
-  }, 80);
+function stopCaller(){
+  const controller = callerController;
+  callerController = null;
+  controller?.abort();
 }
 
 // Add to dealt strip
@@ -535,24 +456,23 @@ function orderDealtCards(){
 
 // Stop ticker
 function stopTicker(){
-  if (timerId) {
-    clearInterval(timerId);
-    timerId = null;
-  }
+  window.clearTimeout(timerId);
+  timerId = null;
 }
 
-// Start ticker
+// The configured interval is the minimum time between deals, including the call.
 function startTicker(){
   stopTicker();
-  if (paused || remaining.length === 0 || cluePending) return;
-  if (aiCluesEnabled) {
-    timerId = window.setTimeout(() => {
-      timerId = null;
-      dealOne();
-    }, delayMs);
-  } else {
-    timerId = setInterval(dealOne, delayMs);
-  }
+  if (!started || paused || remaining.length === 0 || cluePending || callerController) return;
+  timerId = window.setTimeout(() => {
+    timerId = null;
+    dealOne();
+  }, Math.max(0, nextDealAt - performance.now()));
+}
+
+function startDealDelay(){
+  nextDealAt = performance.now() + delayMs;
+  startTicker();
 }
 
 function cancelPendingClue(){
@@ -565,43 +485,31 @@ function cancelPendingClue(){
 
 function completeAiDraw(requestId, card){
   if (requestId !== clueRequestId || !started) return;
-  showCurrentCard(card);
   cluePending = false;
   clueController = null;
   updateAiButton();
-  if (!paused && remaining.length > 0) startTicker();
+  showCurrentCard(card);
 }
 
 function beginGame(){
-  if (started) {
-    return;
-  }
+  if (started || fullDeck.length === 0) return;
 
   started = true;
-  if (speechEnabled && supportsSpeech()) {
-    if (typeof window.speechSynthesis.resume === 'function') {
-      window.speechSynthesis.resume();
-    }
-    speechVoice = pickSpeechVoice();
-    unlockVoiceForSafari();
-  }
-  if (speechEnabled) {
-    playAudioName('start').then(audioPlayed => {
-      if (!audioPlayed && supportsSpeech()) speakIntroPhrase();
-    });
-  }
-
   remaining = [...fullDeck];
   dealt = [];
   showPlaceholder('cardsPlaceholder');
   dealtStrip.innerHTML = '';
   updateLabels();
-  startTicker();
+  if (speechEnabled && !callerController) {
+    unlockVoiceForSafari();
+    announce('start', INTRO_CALL);
+  }
+  startDealDelay();
 }
 
 // Deal card
 function dealOne(){
-  if (paused || remaining.length === 0 || cluePending) return;
+  if (!started || paused || remaining.length === 0 || cluePending || callerController) return;
   const idx = Math.floor(Math.random() * remaining.length);
   const [card] = remaining.splice(idx, 1);
   if (dealt.length > 0) {
@@ -619,7 +527,6 @@ function dealOne(){
       aiCluesEnabled = false;
       updateAiButton();
       showCurrentCard(card);
-      if (remaining.length > 0) startTicker();
     } else {
       cluePending = true;
       updateAiButton();
@@ -646,15 +553,13 @@ function dealOne(){
       });
     }
   }
-
-  if (remaining.length === 0 || aiCluesEnabled) {
-    stopTicker();
-  }
 }
 
 // Reset game
 function resetGame(){
+  started = false;
   stopTicker();
+  stopCaller();
   cancelPendingClue();
   paused = false;
   btnPause.textContent = t('pause');
@@ -662,7 +567,7 @@ function resetGame(){
 
   remaining = [...fullDeck];
   dealt = [];
-  showPlaceholder('cardsPlaceholder');
+  showPlaceholder('startPlaceholder');
   dealtStrip.innerHTML = '';
   updateLabels();
 }
@@ -672,29 +577,22 @@ btnStart.addEventListener('click', () => {
   beginGame();
 });
 
-btnRestart.addEventListener('click', () => {
-  started = false;
-  resetGame();
-  showPlaceholder('startPlaceholder');
-  remaining = [...fullDeck];
-  dealt = [];
-  dealtStrip.innerHTML = '';
-  updateLabels();
-  stopTicker();
-});
+btnRestart.addEventListener('click', resetGame);
 
 btnFaster.addEventListener('click', () => {
   delayMs = Math.max(MIN_DELAY_MS, delayMs - 1000);
   updateLabels();
   savePreferences();
-  startTicker();
+  updateCallerRate();
+  startDealDelay();
 });
 
 btnSlower.addEventListener('click', () => {
   delayMs += 1000;
   updateLabels();
   savePreferences();
-  startTicker();
+  updateCallerRate();
+  startDealDelay();
 });
 
 btnPause.addEventListener('click', () => {
@@ -702,36 +600,21 @@ btnPause.addEventListener('click', () => {
   btnPause.textContent = paused ? t('resume') : t('pause');
   btnPause.setAttribute('aria-pressed', paused);
   if (paused) stopTicker();
-  else startTicker();
+  else startDealDelay();
 });
 
 btnSpeech.addEventListener('click', () => {
-  if (!supportsSpeech()) {
-    speechEnabled = false;
-    updateSpeechButton();
-    savePreferences();
-    return;
-  }
-
   speechEnabled = !speechEnabled;
   if (speechEnabled) {
     void preloadAudioLibrary(fullDeck);
-    if (typeof window.speechSynthesis.resume === 'function') {
-      window.speechSynthesis.resume();
-    }
-    speechVoice = pickSpeechVoice();
     unlockVoiceForSafari();
-    playAudioName('start').then(audioPlayed => {
-      if (!audioPlayed) speakTestPhrase();
-    });
-  } else {
-    audioRequestId += 1;
-    if (audioPlayer) {
-      audioPlayer.pause();
-      audioPlayer.currentTime = 0;
+    if (!cluePending) {
+      if (dealt.length > 0) announce(getCardNameFromSrc(dealt[dealt.length - 1]));
+      else announce('start', INTRO_CALL);
     }
-    window.speechSynthesis.cancel();
-    voiceUnlocked = false;
+  } else {
+    stopCaller();
+    startTicker();
   }
 
   updateSpeechButton();
@@ -752,8 +635,6 @@ if (supportsSpeech()) {
   speechVoice = pickSpeechVoice();
 }
 
-restoreSavedVoicePreference();
-btnStart.disabled = false;
 applyLanguage();
 
 // Keyboard shortcuts
@@ -837,11 +718,11 @@ function filterExistingImages(urls){
 
 // Init
 (async function init(){
+  btnStart.disabled = true;
   loadPreferences();
-  restoreSavedVoicePreference();
   await loadCardMetadata();
-  fullDeck = await loadDeckList();
-  fullDeck = await filterExistingImages(fullDeck);
+  const cardSources = await loadDeckList();
+  fullDeck = await filterExistingImages(cardSources);
 
   if (fullDeck.length === 0) {
     showPlaceholder('noCards');
@@ -854,7 +735,7 @@ function filterExistingImages(urls){
   updateLabels();
   showPlaceholder('startPlaceholder');
   dealtStrip.innerHTML = '';
-  started = false;
+  btnStart.disabled = false;
   updateSpeechButton();
   updateAiButton();
 })();

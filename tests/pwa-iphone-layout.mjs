@@ -63,8 +63,77 @@ function bidi(method, params) {
 async function execute(script) {
   return await request(`/session/${sessionId}/execute/sync`, {
     method: 'POST',
-    body: JSON.stringify({ script, args: [] }),
+    body: JSON.stringify({
+      script: `return window.eval(${JSON.stringify(`(() => {\n${script}\n})()`)})`,
+      args: [],
+    }),
   });
+}
+
+const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function waitFor(condition, message) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (await execute(`return ${condition}`)) return;
+    await sleep(50);
+  }
+  throw new Error(message);
+}
+
+async function verifyCallerPlayback() {
+  await request(`/session/${sessionId}/url`, {
+    method: 'POST', body: JSON.stringify({ url: appUrl }),
+  });
+  await waitFor(`navigator.serviceWorker.controller &&
+    performance.getEntriesByType('navigation')[0]?.type === 'reload' &&
+    document.getElementById('btn-start')?.disabled === false`, 'PWA did not initialize after service worker activation');
+  const rangeServed = await execute(`
+    return fetch('./audio/start.mp3', { headers: { Range: 'bytes=0-1' } }).then(async response => {
+      return response.status === 206 && response.headers.get('Content-Range')?.startsWith('bytes 0-1/') &&
+        (await response.arrayBuffer()).byteLength === 2;
+    });
+  `);
+  if (!rangeServed) throw new Error('The service worker did not support the audio range request');
+  await execute(`
+    for (let i = 0; i < 3; i += 1) document.getElementById('btn-faster').click();
+  `);
+  const start = await request(`/session/${sessionId}/element`, {
+    method: 'POST', body: JSON.stringify({ using: 'css selector', value: '#btn-start' }),
+  });
+  const elementId = start['element-6066-11e4-a52e-4f735466cecf'];
+  await request(`/session/${sessionId}/element/${elementId}/click`, { method: 'POST', body: '{}' });
+  await waitFor('typeof audioPlayer !== "undefined" && audioPlayer?.currentTime > 0', 'The recorded opener did not play');
+  const introRates = await execute(`
+    const originalRate = audioPlayer.playbackRate;
+    document.getElementById('btn-faster').click();
+    const fasterRate = audioPlayer.playbackRate;
+    // Stretch both clips past the one-second deal interval to exercise the playback gate.
+    audioPlayer.playbackRate = 0.25;
+    audioPlayer.addEventListener('ended', () => {
+      window.cardsLeftAtIntroEnd = remaining.length;
+      audioPlayer.addEventListener('playing', () => {
+        window.firstCardRate = audioPlayer.playbackRate;
+        audioPlayer.playbackRate = 0.25;
+      }, { once: true });
+    }, { once: true });
+    return { originalRate, fasterRate, preservesPitch: audioPlayer.preservesPitch };
+  `);
+  if (introRates.originalRate !== 1.3 || introRates.fasterRate !== 1.4 || !introRates.preservesPitch) {
+    throw new Error(`Unexpected opener playback rates ${JSON.stringify(introRates)}`);
+  }
+  await sleep(1100);
+  if (await execute('return remaining.length') !== 54) throw new Error('A card was dealt during the opener');
+  await execute('audioPlayer.playbackRate = 2');
+  await waitFor('window.firstCardRate && remaining.length === 53', 'The first recorded card call did not play');
+  if (!await execute('return cardsLeftAtIntroEnd === 54 && firstCardRate === 1.4')) {
+    throw new Error('The first card started before the opener ended or used the wrong rate');
+  }
+  await sleep(1100);
+  if (await execute('return remaining.length') !== 53) throw new Error('A card was dealt over the previous call');
+  await execute('audioPlayer.playbackRate = 2');
+  await waitFor('remaining.length === 52', 'Dealing did not resume after the card call ended');
+  await execute("document.getElementById('btn-restart').click(); localStorage.removeItem('loteria-preferences')");
+  console.log('Caller playback passed');
 }
 
 const tree = await bidi('browsingContext.getTree', {});
@@ -74,6 +143,7 @@ await Deno.mkdir(outputDir, { recursive: true });
 const results = [];
 
 try {
+  await verifyCallerPlayback();
   for (const device of devices) {
     await bidi('browsingContext.setViewport', {
       context,
@@ -84,7 +154,7 @@ try {
     for (let attempt = 0; attempt < 50; attempt += 1) {
       const ready = await execute(`return document.getElementById('remaining-label')?.textContent.includes('54')`);
       if (ready) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await sleep(100);
     }
     await execute(`
       document.documentElement.classList.add('pwa-standalone');
@@ -94,12 +164,14 @@ try {
       document.documentElement.style.setProperty('--safe-bottom', '${device.safeBottom || 0}px');
       document.documentElement.style.setProperty('--safe-left', '${device.safeLeft || 0}px');
       document.documentElement.style.setProperty('--safe-right', '${device.safeRight || 0}px');
+      const voiceButton = document.getElementById('btn-speech');
+      if (voiceButton.getAttribute('aria-pressed') === 'true') voiceButton.click();
       document.getElementById('btn-start').click();
       dealOne();
       dealOne();
       document.getElementById('btn-pause').click();
     `);
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await sleep(200);
     await execute(`
       document.documentElement.classList.add('pwa-standalone');
       ${device.fold ? `document.documentElement.classList.add('${device.fold}');` : ''}

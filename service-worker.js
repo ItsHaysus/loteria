@@ -1,7 +1,7 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v26';
+const CACHE_NAME = 'card-dealer-v27';
 const APP_SHELL = [
   './',
   './index.html',
@@ -35,6 +35,7 @@ self.addEventListener('activate', (event) => {
 // Fetch: keep card data available offline; refresh the app shell from the network first.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   // Runtime cache for cards
   if (url.pathname.includes('/Cards/')) {
@@ -44,11 +45,9 @@ self.addEventListener('fetch', (event) => {
 
   // Recorded calls are immutable assets; cache them after the first warm-up request.
   if (url.pathname.includes('/audio/')) {
-    event.respondWith(cacheFirst(event.request));
+    event.respondWith(serveAudio(event.request));
     return;
   }
-
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   const isAppShell = event.request.mode === 'navigate'
     || ['script', 'style', 'manifest'].includes(event.request.destination);
@@ -90,12 +89,35 @@ async function staleWhileRevalidate(request) {
   return cached || networkFetch;
 }
 
-async function cacheFirst(request) {
+async function serveAudio(request) {
+  const range = request.headers.get('Range');
+  const fullRequest = range ? new Request(request.url) : request;
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
+  let response = await cache.match(fullRequest);
+  if (!response) {
+    response = await fetch(fullRequest);
+    if (response.status === 200) await cache.put(fullRequest, response.clone());
+  }
 
-  const response = await fetch(request);
-  if (response && response.ok) await cache.put(request, response.clone());
-  return response;
+  const bounds = /^bytes=(\d*)-(\d*)$/i.exec(range || '');
+  if (!bounds || response.status !== 200) return response;
+
+  // Safari requests byte ranges even for small audio clips. Store whole files for offline use.
+  const blob = await response.blob();
+  const [, first, last] = bounds;
+  const start = first ? Number(first) : Math.max(0, blob.size - Number(last));
+  const end = first && last ? Math.min(blob.size - 1, Number(last)) : blob.size - 1;
+  if (start > end) {
+    return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${blob.size}` } });
+  }
+
+  return new Response(blob.slice(start, end + 1), {
+    status: 206,
+    headers: {
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(end - start + 1),
+      'Content-Range': `bytes ${start}-${end}/${blob.size}`,
+      'Content-Type': blob.type,
+    },
+  });
 }
