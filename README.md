@@ -16,6 +16,10 @@ node tests/check-deck.mjs
 npx wrangler deploy
 ```
 
+## Refresh an installed PWA
+
+The `v` query parameter on the service-worker URL in `index.html` is the PWA cache version. Increment it when publishing changed app assets, including card images or recorded calls. On the next online launch, the app checks for the new worker; it installs a new cache, removes the previous `card-dealer-*` cache on activation, reloads, and preloads the current deck. This refreshes downloaded assets without reinstalling the PWA. User preferences stored in local storage are preserved.
+
 ## Build a sideloadable Android APK
 
 The Android app bundles the same static game files, so it does not depend on the hosted site to launch or load cards and recorded calls. Building requires Node.js 22+, JDK 21, and Android SDK Platform 36. The Gradle wrapper downloads Gradle and the required Build Tools on the first build.

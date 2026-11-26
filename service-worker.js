@@ -1,7 +1,9 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v32';
+const CACHE_PREFIX = 'card-dealer-';
+const CACHE_VERSION = new URL(self.location.href).searchParams.get('v') || 'unversioned';
+const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const pendingAssets = new Map();
 const APP_SHELL = [
   './',
@@ -27,7 +29,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key.startsWith('card-dealer-') && key !== CACHE_NAME)
+    await Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
       .map(key => caches.delete(key)));
     await self.clients.claim();
   })());
