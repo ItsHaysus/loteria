@@ -1,5 +1,5 @@
 /* Card Dealer PWA - Lotería Edition
- * Loads WebP card filenames from /Cards/cards.json
+ * Loads card filenames from /Cards/cards.json
  * Controls: Restart (R), Faster(-1s, <), Slower(+1s, >), Pause (Space)
  * Default speed: 5s per card
  * Random deals without repeats while cards remain
@@ -187,7 +187,9 @@ function getFileNameFromSrc(src){
 }
 
 function getCardNameFromSrc(src){
-  return normalizeCardName(getFileNameFromSrc(src));
+  const fileName = getFileNameFromSrc(src);
+  const metadata = cardMetadataByFile.get(fileName);
+  return normalizeCardName(metadata?.name || fileName);
 }
 
 function supportsSpeech(){
@@ -679,6 +681,7 @@ async function loadCardMetadata(){
     updateLabels();
     return;
   }
+  await loadCardMetadata();
   remaining = shuffleDeck();
   // The service worker reloads the page on first activation. Warm its cache on that load.
   if (!navigator.serviceWorker || navigator.serviceWorker.controller) {
@@ -692,6 +695,5 @@ async function loadCardMetadata(){
   dealtStrip.innerHTML = '';
   btnStart.disabled = false;
   btnRestart.disabled = false;
-  await loadCardMetadata();
   updateAiButton();
 })();
