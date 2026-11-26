@@ -33,7 +33,7 @@ const created = await request('/session', {
     capabilities: { alwaysMatch: {
       browserName: 'firefox',
       webSocketUrl: true,
-      'moz:firefoxOptions': { args: ['-headless'] },
+      'moz:firefoxOptions': { args: ['-headless'], prefs: { 'media.autoplay.default': 0 } },
     } },
   }),
 });
@@ -95,13 +95,12 @@ async function verifyCallerPlayback() {
   `);
   if (!rangeServed) throw new Error('The service worker did not support the audio range request');
   await execute(`
+    localStorage.setItem('loteria-preferences', JSON.stringify({ delayMs: 5000, speechEnabled: false }));
+    localStorage.setItem('loteria-language', 'en');
+    loadPreferences();
     for (let i = 0; i < 3; i += 1) document.getElementById('btn-faster').click();
   `);
-  const start = await request(`/session/${sessionId}/element`, {
-    method: 'POST', body: JSON.stringify({ using: 'css selector', value: '#btn-start' }),
-  });
-  const elementId = start['element-6066-11e4-a52e-4f735466cecf'];
-  await request(`/session/${sessionId}/element/${elementId}/click`, { method: 'POST', body: '{}' });
+  await execute("document.getElementById('btn-start').click()");
   await waitFor('typeof audioPlayer !== "undefined" && audioPlayer?.currentTime > 0', 'The recorded opener did not play');
   const introRates = await execute(`
     const originalRate = audioPlayer.playbackRate;
@@ -132,13 +131,24 @@ async function verifyCallerPlayback() {
   if (await execute('return remaining.length') !== 53) throw new Error('A card was dealt over the previous call');
   await execute('audioPlayer.playbackRate = 2');
   await waitFor('remaining.length === 52', 'Dealing did not resume after the card call ended');
+  const controlStates = await execute(`
+    const control = document.getElementById('btn-start');
+    const playing = control.textContent;
+    control.click();
+    const paused = control.textContent;
+    control.click();
+    return [document.documentElement.lang, playing, paused, control.textContent];
+  `);
+  if (controlStates.join(',') !== 'es,Pausar,Continuar,Pausar') {
+    throw new Error(`Unexpected play control states ${controlStates.join(',')}`);
+  }
   await execute("document.getElementById('btn-restart').click()");
   await waitFor(
     "remaining.length === 54 && audioPlayer.currentSrc.endsWith('/audio/start.mp3') && audioPlayer.currentTime > 0",
-    'Restart did not replay the opener',
+    'Restart did not start a new round with the opener',
   );
-  await waitFor('remaining.length === 53', 'Dealing did not resume after the restarted opener');
-  await execute("localStorage.removeItem('loteria-preferences')");
+  await waitFor('remaining.length === 53', 'Restart did not resume dealing');
+  await execute("localStorage.removeItem('loteria-preferences'); localStorage.removeItem('loteria-language')");
   console.log('Caller playback passed');
 }
 
@@ -170,12 +180,12 @@ try {
       document.documentElement.style.setProperty('--safe-bottom', '${device.safeBottom || 0}px');
       document.documentElement.style.setProperty('--safe-left', '${device.safeLeft || 0}px');
       document.documentElement.style.setProperty('--safe-right', '${device.safeRight || 0}px');
-      const voiceButton = document.getElementById('btn-speech');
-      if (voiceButton.getAttribute('aria-pressed') === 'true') voiceButton.click();
+      // Playback is tested above. Render the layout with cards immediately.
+      announce = () => {};
       document.getElementById('btn-start').click();
       dealOne();
       dealOne();
-      document.getElementById('btn-pause').click();
+      document.getElementById('btn-start').click();
     `);
     await sleep(200);
     await execute(`

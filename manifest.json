@@ -1,11 +1,11 @@
 {
-  "name": "Lotería Card Dealer",
+  "name": "Lotería",
   "short_name": "Lotería",
   "start_url": "/loteria/",
   "scope": "/loteria/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "description": "A modern PWA for dealing Lotería cards with voice support and offline play",
+  "description": "Juega lotería con un cantador y sin conexión.",
   "lang": "es",
   "dir": "auto",
   "theme_color": "#0f172a",
@@ -35,9 +35,9 @@
   "prefer_related_applications": false,
   "shortcuts": [
     {
-      "name": "Start Game",
+      "name": "Iniciar partida",
       "url": "/loteria/",
-      "description": "Launch a new Lotería game"
+      "description": "Inicia una partida de lotería"
     }
   ]
 }

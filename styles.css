@@ -647,6 +647,8 @@ body{
   flex: 0 0 auto;
 }
 
+:root.fold-inner-portrait .controls .btn { min-height: 44px; }
+
 :root.fold-outer .topbar {
   grid-template-columns: 1fr;
   align-items: start;
@@ -675,9 +677,6 @@ body{
 :root.fold-outer .controls #btn-restart { order: 2; }
 :root.fold-outer .controls #btn-faster { order: 3; }
 :root.fold-outer .controls #btn-slower { order: 4; }
-:root.fold-outer .controls #btn-pause { order: 5; }
-:root.fold-outer .controls #btn-speech { order: 6; }
-:root.fold-outer .controls #btn-language { order: 7; }
 :root.fold-outer .status {
   width: auto;
   flex-direction: row;
