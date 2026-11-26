@@ -46,6 +46,13 @@ body {
   color: var(--ink);
   font: 500 1rem/1.35 system-ui, sans-serif;
 }
+
+@media (display-mode: standalone) {
+  html {
+    touch-action: pan-x pan-y;
+  }
+}
+
 [hidden] { display: none !important; }
 
 .topbar,
