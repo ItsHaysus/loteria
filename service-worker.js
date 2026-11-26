@@ -1,13 +1,14 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v27';
+const CACHE_NAME = 'card-dealer-v28';
+const pendingAssets = new Map();
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css',
-  './script.js',
-  './ai-clue.js',
+  './styles.css?v=1.4.8',
+  './script.js?v=1.4.8',
+  './ai-clue.js?v=1.4.4',
   './manifest.webmanifest',
   './icons/loteria-icon.svg',
   './icons/icon-192.png',
@@ -22,24 +23,23 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: cleanup old caches
+// Activate: cleanup old caches before claiming pages.
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => (k === CACHE_NAME) ? null : caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith('card-dealer-') && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-// Fetch: keep card data available offline; refresh the app shell from the network first.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Runtime cache for cards
   if (url.pathname.includes('/Cards/')) {
-    event.respondWith(staleWhileRevalidate(event.request));
+    const getResponse = url.pathname.endsWith('.json') ? networkFirst : cacheAsset;
+    event.respondWith(getResponse(event.request));
     return;
   }
 
@@ -71,33 +71,37 @@ async function networkFirst(request) {
     }
     return response;
   } catch (error) {
-    const cached = await cache.match(request) || await caches.match(request);
+    const cached = await cache.match(request);
     if (cached) return cached;
     throw error;
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function cacheAsset(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const networkFetch = fetch(request).then(response => {
-    if (response && response.status === 200) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  }).catch(() => cached);
-  return cached || networkFetch;
+  if (cached) return cached;
+
+  const url = request.url;
+  if (!pendingAssets.has(url)) {
+    const download = (async () => {
+      const response = await fetch(request);
+      if (response.status === 200) {
+        await cache.put(request, response.clone()).catch(error => {
+          console.warn(`[cache] Could not store ${url}:`, error);
+        });
+      }
+      return response;
+    })().finally(() => pendingAssets.delete(url));
+    pendingAssets.set(url, download);
+  }
+  return (await pendingAssets.get(url)).clone();
 }
 
 async function serveAudio(request) {
   const range = request.headers.get('Range');
   const fullRequest = range ? new Request(request.url) : request;
-  const cache = await caches.open(CACHE_NAME);
-  let response = await cache.match(fullRequest);
-  if (!response) {
-    response = await fetch(fullRequest);
-    if (response.status === 200) await cache.put(fullRequest, response.clone());
-  }
+  const response = await cacheAsset(fullRequest);
 
   const bounds = /^bytes=(\d*)-(\d*)$/i.exec(range || '');
   if (!bounds || response.status !== 200) return response;
