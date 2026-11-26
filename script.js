@@ -8,7 +8,6 @@
 
 const DEFAULT_DELAY_MS = 5000; // 5s per card
 const MIN_DELAY_MS = 1000;     // 1s per card minimum
-const DEFAULT_SPEECH_ENABLED = true;
 const STORAGE_KEY = 'loteria-preferences';
 const AI_API_URL = window.LOTERIA_AI_API_URL || '';
 const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
@@ -28,71 +27,24 @@ const btnStart   = document.getElementById('btn-start');
 const btnRestart = document.getElementById('btn-restart');
 const btnFaster  = document.getElementById('btn-faster');
 const btnSlower  = document.getElementById('btn-slower');
-const btnPause   = document.getElementById('btn-pause');
-const btnSpeech  = document.getElementById('btn-speech');
 const btnAi      = document.getElementById('btn-ai');
-const btnLanguage = document.getElementById('btn-language');
-const LANGUAGE_KEY = 'loteria-language';
-let language = 'en';
-try { language = localStorage.getItem(LANGUAGE_KEY) === 'es' ? 'es' : 'en'; } catch (error) { console.warn('Could not load language preference:', error); }
 const TEXT = {
-  en: {
-    start: 'Start', startTitle: 'Start the game', restart: 'Restart', restartTitle: 'Restart game (R)',
-    faster: 'Faster (-1s)', fasterTitle: 'Speed up (< or comma)', slower: 'Slower (+1s)', slowerTitle: 'Slow down (> or period)',
-    pause: 'Pause', resume: 'Resume', pauseTitle: 'Pause/Resume (Space)', voiceOn: 'Voice: On', voiceOff: 'Voice: Off', voiceTitle: 'Enable/disable spoken card names',
-    aiOn: 'AI clues: On', aiOff: 'AI clues: Off', aiTitle: 'Enable optional AI clues', aiSource: 'AI clue', fallbackSource: 'Built-in clue',
-    languageButton: 'Español', languageLabel: 'Switch language to Spanish', speed: 'Speed: {seconds}s / card', speedInitial: 'Speed: 5s / card',
-    remaining: 'Remaining: {count}', remainingInitial: 'Remaining: —', cardsPlaceholder: 'Cards will appear here', startPlaceholder: 'Press Start to begin',
-    loading: 'Loading deck...', loadingCount: 'Loading {count} cards...', deckError: '❌ Error loading deck list. Check console.',
-    noCards: '❌ No cards found in /Cards/cards.json', dealt: 'Dealt (in order):',
-    copyCard: 'Current card', dealtCard: 'Dealt card',
-  },
-  es: {
-    start: 'Iniciar', startTitle: 'Iniciar el juego', restart: 'Reiniciar', restartTitle: 'Reiniciar el juego (R)',
-    faster: 'Más rápido (-1s)', fasterTitle: 'Acelerar (< o coma)', slower: 'Más lento (+1s)', slowerTitle: 'Ralentizar (> o punto)',
-    pause: 'Pausar', resume: 'Continuar', pauseTitle: 'Pausar/continuar (Espacio)', voiceOn: 'Voz: activada', voiceOff: 'Voz: desactivada', voiceTitle: 'Activar/desactivar nombres hablados',
-    aiOn: 'Pistas IA: activadas', aiOff: 'Pistas IA: desactivadas', aiTitle: 'Activar pistas opcionales con IA', aiSource: 'Pista IA', fallbackSource: 'Pista incluida',
-    languageButton: 'English', languageLabel: 'Cambiar idioma a inglés', speed: 'Velocidad: {seconds}s / carta', speedInitial: 'Velocidad: 5s / carta',
-    remaining: 'Restantes: {count}', remainingInitial: 'Restantes: —', cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
-    loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...', deckError: '❌ Error al cargar la lista. Revisa la consola.',
-    noCards: '❌ No se encontraron cartas en /Cards/cards.json', dealt: 'Repartidas (en orden):',
-    copyCard: 'Carta actual', dealtCard: 'Carta repartida',
-  },
+  start: 'Iniciar', pause: 'Pausar', resume: 'Continuar',
+  aiOn: 'Pistas de IA: activadas', aiOff: 'Pistas de IA: desactivadas',
+  aiSource: 'Pista de IA', fallbackSource: 'Pista incluida',
+  speed: 'Velocidad: {seconds}s / carta', remaining: 'Restantes: {count}',
+  cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
+  loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...',
+  deckError: 'Error al cargar la lista de cartas.', noCards: 'No se encontraron cartas.',
+  copyCard: 'Carta actual', dealtCard: 'Carta repartida',
 };
 
 function t(key, values = {}) {
-  let text = TEXT[language][key] || TEXT.en[key] || key;
+  let text = TEXT[key] || key;
   for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, value);
   return text;
 }
 
-function applyLanguage() {
-  document.documentElement.lang = language;
-  document.querySelectorAll('[data-i18n]').forEach(element => {
-    element.textContent = t(element.dataset.i18n);
-  });
-  document.querySelectorAll('[data-i18n-title]').forEach(element => {
-    element.title = t(element.dataset.i18nTitle);
-  });
-  document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
-    element.setAttribute('aria-label', t(element.dataset.i18nAriaLabel));
-  });
-  document.querySelectorAll('[data-language-key]').forEach(element => {
-    element.textContent = t(element.dataset.languageKey, { count: element.dataset.count || '' });
-  });
-  btnLanguage.textContent = t('languageButton');
-  btnLanguage.setAttribute('aria-label', t('languageLabel'));
-  btnPause.textContent = paused ? t('resume') : t('pause');
-  updateLabels();
-  updateSpeechButton();
-  updateAiButton();
-}
-
-btnLanguage.addEventListener('click', () => {
-  language = language === 'en' ? 'es' : 'en';
-  try { localStorage.setItem(LANGUAGE_KEY, language); } catch (error) { console.warn('Could not save language preference:', error); }
-  applyLanguage();
-});
 const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
@@ -138,7 +90,6 @@ let delayMs = DEFAULT_DELAY_MS;
 let paused = false;
 let timerId = null;
 let nextDealAt = 0;
-let speechEnabled = DEFAULT_SPEECH_ENABLED;
 let speechVoice = null;
 let audioPlayer = null;
 let callerController = null;
@@ -170,7 +121,6 @@ function savePreferences(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       delayMs,
-      speechEnabled,
     }));
   } catch (e) {
     console.warn('Could not save preferences:', e);
@@ -182,22 +132,17 @@ function loadPreferences(){
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const { delayMs: savedDelay, speechEnabled: savedSpeech } = JSON.parse(saved);
+      const { delayMs: savedDelay } = JSON.parse(saved);
       if (Number.isFinite(savedDelay) && savedDelay >= MIN_DELAY_MS) {
         delayMs = savedDelay;
-      }
-      if (typeof savedSpeech === 'boolean') {
-        speechEnabled = savedSpeech;
       }
     }
   } catch (e) {
     console.warn('Could not load preferences:', e);
   }
-
-  updateSpeechButton();
 }
 
-function createCardFrame(src, alt = 'Card'){
+function createCardFrame(src, alt = 'Carta'){
   const frame = document.createElement('div');
   frame.className = 'card-frame';
 
@@ -211,8 +156,7 @@ function createCardFrame(src, alt = 'Card'){
 }
 
 function showPlaceholder(key, values = {}){
-  const countAttribute = values.count === undefined ? '' : ` data-count="${values.count}"`;
-  currentCardEl.innerHTML = `<div class="placeholder" data-language-key="${key}"${countAttribute}>${t(key, values)}</div>`;
+  currentCardEl.innerHTML = `<div class="placeholder">${t(key, values)}</div>`;
 }
 
 function showClue(clue, source){
@@ -260,14 +204,6 @@ function pickSpeechVoice(){
   const isPremium = voice => /\b(premium|enhanced|natural|neural)\b/i.test(voice.name);
   return mexicanVoices.find(isPremium) || mexicanVoices[0]
     || spanishVoices.find(isPremium) || spanishVoices[0] || null;
-}
-
-function updateSpeechButton(){
-  if (!btnSpeech) return;
-  const isActive = speechEnabled;
-  btnSpeech.textContent = isActive ? t('voiceOn') : t('voiceOff');
-  btnSpeech.classList.toggle('is-active', isActive);
-  btnSpeech.setAttribute('aria-pressed', String(isActive));
 }
 
 function updateAiButton(){
@@ -412,7 +348,7 @@ function speakCall(text, signal){
 }
 
 function announce(name, spokenText = name){
-  if (!speechEnabled || callerController) return;
+  if (callerController) return;
 
   const controller = new AbortController();
   const { signal } = controller;
@@ -463,7 +399,14 @@ function stopTicker(){
 // The configured interval is the minimum time between deals, including the call.
 function startTicker(){
   stopTicker();
-  if (!started || paused || remaining.length === 0 || cluePending || callerController) return;
+  if (!started || cluePending || callerController) return;
+  if (remaining.length === 0) {
+    started = false;
+    paused = false;
+    updatePlayButton();
+    return;
+  }
+  if (paused) return;
   timerId = window.setTimeout(() => {
     timerId = null;
     dealOne();
@@ -500,10 +443,9 @@ function beginGame(){
   showPlaceholder('cardsPlaceholder');
   dealtStrip.innerHTML = '';
   updateLabels();
-  if (speechEnabled && !callerController) {
-    unlockVoiceForSafari();
-    announce('start', INTRO_CALL);
-  }
+  updatePlayButton();
+  unlockVoiceForSafari();
+  announce('start', INTRO_CALL);
   startDealDelay();
 }
 
@@ -555,29 +497,34 @@ function dealOne(){
   }
 }
 
-// Reset game
-function resetGame(){
-  started = false;
+function updatePlayButton(){
+  const label = started ? (paused ? 'resume' : 'pause') : 'start';
+  btnStart.textContent = t(label);
+}
+
+function restartGame(){
+  if (fullDeck.length === 0) return;
   stopTicker();
   stopCaller();
   cancelPendingClue();
+  started = false;
   paused = false;
-  btnPause.textContent = t('pause');
-  btnPause.setAttribute('aria-pressed', false);
-
-  remaining = [...fullDeck];
-  dealt = [];
-  showPlaceholder('startPlaceholder');
-  dealtStrip.innerHTML = '';
-  updateLabels();
+  beginGame();
 }
 
 // Controls
 btnStart.addEventListener('click', () => {
-  beginGame();
+  if (!started) {
+    beginGame();
+    return;
+  }
+  paused = !paused;
+  updatePlayButton();
+  if (paused) stopTicker();
+  else startDealDelay();
 });
 
-btnRestart.addEventListener('click', resetGame);
+btnRestart.addEventListener('click', restartGame);
 
 btnFaster.addEventListener('click', () => {
   delayMs = Math.max(MIN_DELAY_MS, delayMs - 1000);
@@ -595,32 +542,6 @@ btnSlower.addEventListener('click', () => {
   startDealDelay();
 });
 
-btnPause.addEventListener('click', () => {
-  paused = !paused;
-  btnPause.textContent = paused ? t('resume') : t('pause');
-  btnPause.setAttribute('aria-pressed', paused);
-  if (paused) stopTicker();
-  else startDealDelay();
-});
-
-btnSpeech.addEventListener('click', () => {
-  speechEnabled = !speechEnabled;
-  if (speechEnabled) {
-    void preloadAudioLibrary(fullDeck);
-    unlockVoiceForSafari();
-    if (!cluePending) {
-      if (dealt.length > 0) announce(getCardNameFromSrc(dealt[dealt.length - 1]));
-      else announce('start', INTRO_CALL);
-    }
-  } else {
-    stopCaller();
-    startTicker();
-  }
-
-  updateSpeechButton();
-  savePreferences();
-});
-
 btnAi?.addEventListener('click', () => {
   if (!AI_CLUES_AVAILABLE) return;
   aiCluesEnabled = !aiCluesEnabled;
@@ -635,7 +556,7 @@ if (supportsSpeech()) {
   speechVoice = pickSpeechVoice();
 }
 
-applyLanguage();
+updateAiButton();
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -643,7 +564,7 @@ document.addEventListener('keydown', (e) => {
   switch (e.key.toLowerCase()) {
     case 'r':
       e.preventDefault();
-      resetGame();
+      restartGame();
       break;
     case '<':
     case ',':
@@ -657,7 +578,7 @@ document.addEventListener('keydown', (e) => {
       break;
     case ' ':
       e.preventDefault();
-      btnPause.click();
+      btnStart.click();
       break;
   }
 });
@@ -719,6 +640,7 @@ function filterExistingImages(urls){
 // Init
 (async function init(){
   btnStart.disabled = true;
+  btnRestart.disabled = true;
   loadPreferences();
   await loadCardMetadata();
   const cardSources = await loadDeckList();
@@ -730,12 +652,12 @@ function filterExistingImages(urls){
     return;
   }
   remaining = [...fullDeck];
-  if (speechEnabled) void preloadAudioLibrary(fullDeck);
+  void preloadAudioLibrary(fullDeck);
   dealt = [];
   updateLabels();
   showPlaceholder('startPlaceholder');
   dealtStrip.innerHTML = '';
   btnStart.disabled = false;
-  updateSpeechButton();
+  btnRestart.disabled = false;
   updateAiButton();
 })();

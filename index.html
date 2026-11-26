@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -7,45 +7,42 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Lotería" />
-  <title>Card Dealer PWA</title>
+  <title>Lotería</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/loteria-icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=1.4.4" />
+  <link rel="stylesheet" href="styles.css?v=1.4.7" />
 </head>
 <body>
   <header class="topbar">
     <div class="controls">
-      <button id="btn-start" class="btn" data-i18n="start" data-i18n-title="startTitle" disabled>Start</button>
-      <button id="btn-restart" class="btn" data-i18n="restart" data-i18n-title="restartTitle">Restart</button>
-      <button id="btn-faster" class="btn" data-i18n="faster" data-i18n-title="fasterTitle">Faster (-1s)</button>
-      <button id="btn-slower" class="btn" data-i18n="slower" data-i18n-title="slowerTitle">Slower (+1s)</button>
-      <button id="btn-pause" class="btn" aria-pressed="false" data-i18n="pause" data-i18n-title="pauseTitle">Pause</button>
-      <button id="btn-speech" class="btn" aria-pressed="true" data-i18n="voiceOn" data-i18n-title="voiceTitle">Voice: On</button>
-      <button id="btn-ai" class="btn" aria-pressed="false" data-i18n="aiOff" data-i18n-title="aiTitle" hidden>AI clues: Off</button>
-      <button id="btn-language" class="btn" type="button" aria-label="Cambiar idioma">Español</button>
+      <button id="btn-start" class="btn" title="Iniciar, pausar o continuar (Espacio)" disabled>Iniciar</button>
+      <button id="btn-restart" class="btn" title="Reiniciar el juego (R)" disabled>Reiniciar</button>
+      <button id="btn-faster" class="btn" title="Acelerar (&lt; o coma)">Más rápido (-1s)</button>
+      <button id="btn-slower" class="btn" title="Ralentizar (&gt; o punto)">Más lento (+1s)</button>
+      <button id="btn-ai" class="btn" aria-pressed="false" title="Activar pistas opcionales de IA" hidden>Pistas de IA: desactivadas</button>
     </div>
     <div class="status">
-      <span id="speed-label" aria-live="polite" data-i18n="speedInitial">Speed: 5s / card</span>
-      <span id="remaining-label" aria-live="polite" data-i18n="remainingInitial">Remaining: —</span>
+      <span id="speed-label" aria-live="polite">Velocidad: 5s / carta</span>
+      <span id="remaining-label" aria-live="polite">Restantes: —</span>
     </div>
   </header>
 
   <main class="main">
     <div id="current-card" class="current-card" aria-live="polite">
-      <div class="placeholder" data-i18n="cardsPlaceholder">Cards will appear here</div>
+      <div class="placeholder">Las cartas aparecerán aquí</div>
     </div>
 
     <section class="dealt-section">
-      <h2 data-i18n="dealt">Dealt (in order):</h2>
+      <h2>Repartidas (en orden):</h2>
       <div id="dealt-strip" class="dealt-strip" aria-live="polite"></div>
     </section>
   </main>
 
-  <div class="version-counter" id="version-counter" aria-label="Version 1.4.5">1.4.5</div>
+  <div class="version-counter" id="version-counter" aria-label="Versión 1.4.7">1.4.7</div>
 
   <script src="ai-clue.js?v=1.4.4" defer></script>
-  <script src="script.js?v=1.4.5" defer></script>
+  <script src="script.js?v=1.4.7" defer></script>
   <script>
     // Register the service worker for the HTTPS-hosted PWA.
     if ('serviceWorker' in navigator) {
@@ -59,7 +56,7 @@
       window.addEventListener('load', async () => {
         try {
           // Version the worker URL to bypass stale iOS Home Screen app caches.
-          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.5', {
+          const registration = await navigator.serviceWorker.register('./service-worker.js?v=1.4.7', {
             updateViaCache: 'none',
           });
           const checkForUpdate = () => registration.update().catch(console.error);
