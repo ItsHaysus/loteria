@@ -53,6 +53,17 @@ body {
   }
 }
 
+.version-watermark {
+  position: fixed;
+  right: calc(8px + var(--safe-right));
+  bottom: calc(2px + var(--safe-bottom));
+  z-index: 1;
+  color: var(--muted);
+  font-size: .65rem;
+  opacity: .7;
+  pointer-events: none;
+}
+
 [hidden] { display: none !important; }
 
 .topbar,
