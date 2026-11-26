@@ -1,10 +1,11 @@
 {
   "name": "loteria-android",
-  "version": "1.0.0",
+  "version": "1.5.1",
   "private": true,
   "scripts": {
     "android:prepare": "node scripts/prepare-android-web.mjs",
-    "android:build": "npm run android:prepare && cap sync android && capacitor-assets generate --android --assetPath android-assets --iconBackgroundColor '#062b20' --splashBackgroundColor '#062b20' && cd android && ./gradlew assembleDebug"
+    "android:sync": "npm run android:prepare && cap sync android && capacitor-assets generate --android --assetPath android-assets --iconBackgroundColor '#062b20' --splashBackgroundColor '#062b20'",
+    "android:build": "npm run android:sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "8.6.3",

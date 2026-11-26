@@ -27,9 +27,17 @@ npm ci
 npm run android:build
 ```
 
-The installable APK is created at `android/app/build/outputs/apk/debug/app-debug.apk`. It is debug-signed for sideloading; Android may ask the recipient to allow installation from the app used to open the file. The generated APK can be shared directly. Keep the build machine's debug signing key if you need to create updates that install over this debug build.
+The installable debug APK is created at `android/app/build/outputs/apk/debug/app-debug.apk`. It is debug-signed for testing and sideloading; Android may ask the recipient to allow installation from the app used to open the file. Debug builds from different machines may not update each other.
 
 `npm run android:build` stages only the game and its runtime assets in an ignored directory before syncing Capacitor. Update the app's Android icon from `icons/loteria-icon.svg`; it is regenerated during the build. No Google Play account or publishing setup is needed.
+
+### Automated signed releases
+
+`package.json` is the source of the app's `versionName`; it is currently `1.5.1`. GitHub Actions builds debug APK artifacts for pull requests to `master` and pushes to `master`. A signed release requires a matching `v`-prefixed tag, so the first release should use `v1.5.1`. The workflow checks the tag against `package.json`, and uses the increasing Actions workflow run number for Android's `versionCode`. For the next release, bump the package version and create a tag with the same version.
+
+Before creating a release tag, add these repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Generate one keystore and retain a secure backup; every update must use the same keystore or Android will reject it as an update. Never commit the keystore or its passwords.
+
+The existing `v1.0.0` APK is debug-signed, so it must be uninstalled before installing the first release-signed APK. Subsequent signed releases will update normally.
 
 ## Install on iPhone
 
