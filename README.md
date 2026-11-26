@@ -19,7 +19,7 @@ npx wrangler deploy
 
 Serve the checkout over HTTPS (or use localhost for desktop development), open it in Safari, then choose **Share → Add to Home Screen → Add**. Launch Lotería from its Home Screen icon so it runs in standalone mode. Check portrait and landscape, draw several cards, scroll the dealt-card strip, and confirm recorded calls play after enabling Voice.
 
-The responsive smoke test covers exact CSS viewports for iPhone SE, 13 mini, 15, 18 Pro, Air, 18 Pro Max, and iPhone Duo outer/inner displays. It checks safe-area layout, 44px touch targets, overflow, card rendering, and that the normal PWA keeps AI hidden. With a static server on port 8000 and geckodriver on port 4444:
+The smoke test checks caller playback and covers exact CSS viewports for iPhone SE, 13 mini, 15, 18 Pro, Air, 18 Pro Max, and iPhone Duo outer/inner displays. It checks safe-area layout, 44px touch targets, overflow, card rendering, and that the normal PWA keeps AI hidden. With a static server on port 8000 and geckodriver on port 4444:
 
 ```sh
 deno run \
@@ -28,7 +28,7 @@ deno run \
   tests/pwa-iphone-layout.mjs
 ```
 
-This is a responsive-layout smoke test, not a replacement for installing the app on physical iPhone hardware and checking Mobile Safari behavior.
+Use a physical iPhone to verify Mobile Safari and Home Screen playback.
 
 ## Run locally with Docker
 
@@ -46,10 +46,12 @@ From a second terminal, check that the page, card list, and one recorded call ar
 ```sh
 curl -fsS -o /dev/null http://localhost:8080/
 curl -fsS http://localhost:8080/Cards/cards.json
-curl -fsS -o /dev/null http://localhost:8080/audio/El%20%C3%81rbol.opus
+curl -fsS -o /dev/null http://localhost:8080/audio/El%20%C3%81rbol.mp3
 ```
 
 In the browser, click Start and check that the cards appear and recorded calls play with audio enabled. Try pausing, resuming, changing speed, and restarting.
+
+The bundled MP3 calls were generated with the Mexican Spanish [Piper Claude voice](https://huggingface.co/rhasspy/piper-voices/blob/5ec43b186ef915a195d3ddbcfd9916e76c503c3f/es/es_MX/claude/high/MODEL_CARD). The deal speed sets the minimum spacing between cards and adjusts the caller's pace. The opener and each card call finish before the next deal.
 
 ## Retained developer tooling
 
