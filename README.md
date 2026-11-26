@@ -59,3 +59,14 @@ The bundled MP3 calls were generated with the Mexican Spanish [Piper Claude voic
 See [api/README.md](api/README.md) for the explicit developer opt-in.
 
 For the disposable Podman-backed kind deployment with an internal fake API, see [k8s/full-stack.md](k8s/full-stack.md).
+
+### Generate a synthetic caller preview
+
+The optional generator uses Jorge’s cheerful style on an existing Azure Speech F0 resource. Sign in with Azure CLI using an account that can read the resource and list its keys. The generator checks the resource tier before requesting a key or synthesizing speech.
+
+```sh
+python3 tools/generate-caller.py --resource-group YOUR_GROUP --name YOUR_SPEECH_RESOURCE \
+  --preview --output /tmp/loteria-jorge-preview
+```
+
+Omit `--preview` and use a fresh output directory to render all 55 clips. Review the clips before promoting them into `audio/`. Run `node tests/check-deck.mjs` and bump the service worker cache when replacing the bundled audio so installed copies download the new clips.
