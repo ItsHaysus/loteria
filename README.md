@@ -16,6 +16,21 @@ node tests/check-deck.mjs
 npx wrangler deploy
 ```
 
+## Build a sideloadable Android APK
+
+The Android app bundles the same static game files, so it does not depend on the hosted site to launch or load cards and recorded calls. Building requires Node.js 22+, JDK 21, and Android SDK Platform 36. The Gradle wrapper downloads Gradle and the required Build Tools on the first build.
+
+From the repository root, install the JavaScript dependencies and build the debug APK:
+
+```sh
+npm ci
+npm run android:build
+```
+
+The installable APK is created at `android/app/build/outputs/apk/debug/app-debug.apk`. It is debug-signed for sideloading; Android may ask the recipient to allow installation from the app used to open the file. The generated APK can be shared directly. Keep the build machine's debug signing key if you need to create updates that install over this debug build.
+
+`npm run android:build` stages only the game and its runtime assets in an ignored directory before syncing Capacitor. Update the app's Android icon from `icons/loteria-icon.svg`; it is regenerated during the build. No Google Play account or publishing setup is needed.
+
 ## Install on iPhone
 
 Serve the checkout over HTTPS (or use localhost for desktop development), open it in Safari, then choose **Share → Add to Home Screen → Add**. Launch Lotería from its Home Screen icon so it runs in standalone mode. Check portrait and landscape, draw several cards, scroll the dealt-card strip, and confirm recorded calls play when you start the game.

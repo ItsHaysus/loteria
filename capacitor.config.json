@@ -1,0 +1,8 @@
+{
+  "appId": "com.its_haysus.loteria",
+  "appName": "Lotería",
+  "webDir": "android-web",
+  "server": {
+    "androidScheme": "https"
+  }
+}
