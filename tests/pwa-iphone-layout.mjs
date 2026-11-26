@@ -33,7 +33,7 @@ const created = await request('/session', {
     capabilities: { alwaysMatch: {
       browserName: 'firefox',
       webSocketUrl: true,
-      'moz:firefoxOptions': { args: ['-headless'] },
+      'moz:firefoxOptions': { args: ['-headless'], prefs: { 'media.autoplay.default': 0 } },
     } },
   }),
 });
@@ -100,11 +100,7 @@ async function verifyCallerPlayback() {
     loadPreferences();
     for (let i = 0; i < 3; i += 1) document.getElementById('btn-faster').click();
   `);
-  const start = await request(`/session/${sessionId}/element`, {
-    method: 'POST', body: JSON.stringify({ using: 'css selector', value: '#btn-start' }),
-  });
-  const elementId = start['element-6066-11e4-a52e-4f735466cecf'];
-  await request(`/session/${sessionId}/element/${elementId}/click`, { method: 'POST', body: '{}' });
+  await execute("document.getElementById('btn-start').click()");
   await waitFor('typeof audioPlayer !== "undefined" && audioPlayer?.currentTime > 0', 'The recorded opener did not play');
   const introRates = await execute(`
     const originalRate = audioPlayer.playbackRate;
