@@ -647,6 +647,8 @@ body{
   flex: 0 0 auto;
 }
 
+:root.fold-inner-portrait .controls .btn { min-height: 44px; }
+
 :root.fold-outer .topbar {
   grid-template-columns: 1fr;
   align-items: start;
