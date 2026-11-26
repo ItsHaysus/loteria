@@ -14,7 +14,8 @@ const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
   || new URLSearchParams(window.location.search).get('ai') === 'dev';
 const AI_REQUEST_TIMEOUT_MS = 3500;
 const CLUE_DISPLAY_MS = 1800;
-const CALLER_START_TIMEOUT_MS = 5000;
+const CALLER_STALL_TIMEOUT_MS = 5000;
+const SPOKEN_CALL_TIMEOUT_MS = 8000;
 const ASSET_PRELOAD_CONCURRENCY = 4;
 const UPCOMING_CARD_COUNT = 3;
 const INTRO_CALL = 'Corre y se va con';
@@ -290,9 +291,34 @@ function playRecordedCall(name, signal){
 
   return new Promise(resolve => {
     let settled = false;
+    let retried = false;
+    let lastPosition = 0;
     const finished = () => finish(true);
     const failed = () => finish(false);
-    const timeoutId = window.setTimeout(failed, CALLER_START_TIMEOUT_MS);
+    let timeoutId = window.setTimeout(failed, CALLER_STALL_TIMEOUT_MS);
+
+    function resetTimeout(){
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(failed, CALLER_STALL_TIMEOUT_MS);
+    }
+
+    function trackProgress(){
+      if (player.currentTime === lastPosition) return;
+      lastPosition = player.currentTime;
+      resetTimeout();
+    }
+
+    function recoverPause(){
+      // A natural ending can also fire pause. Let ended finish that call.
+      if (!player.paused || player.ended) return;
+      if (retried) {
+        failed();
+        return;
+      }
+      retried = true;
+      resetTimeout();
+      player.play().catch(failed);
+    }
 
     function finish(played){
       if (settled) return;
@@ -300,6 +326,8 @@ function playRecordedCall(name, signal){
       window.clearTimeout(timeoutId);
       player.removeEventListener('ended', finished);
       player.removeEventListener('error', failed);
+      player.removeEventListener('pause', recoverPause);
+      player.removeEventListener('timeupdate', trackProgress);
       signal.removeEventListener('abort', failed);
       if (!played) player.pause();
       resolve(played);
@@ -307,9 +335,11 @@ function playRecordedCall(name, signal){
 
     player.addEventListener('ended', finished);
     player.addEventListener('error', failed);
+    player.addEventListener('pause', recoverPause);
+    player.addEventListener('timeupdate', trackProgress);
     signal.addEventListener('abort', failed);
     // Call play directly from the Start gesture so Safari enables this player for later cards.
-    player.play().then(() => window.clearTimeout(timeoutId), failed);
+    player.play().catch(failed);
   });
 }
 
@@ -333,7 +363,7 @@ function speakCall(text, signal){
   if (speechVoice) utterance.voice = speechVoice;
 
   return new Promise(resolve => {
-    const timeoutId = window.setTimeout(cancel, CALLER_START_TIMEOUT_MS);
+    let timeoutId = window.setTimeout(cancel, CALLER_STALL_TIMEOUT_MS);
 
     function finish(){
       window.clearTimeout(timeoutId);
@@ -347,7 +377,10 @@ function speakCall(text, signal){
       synthesis.cancel();
     }
 
-    utterance.onstart = () => window.clearTimeout(timeoutId);
+    utterance.onstart = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(cancel, SPOKEN_CALL_TIMEOUT_MS);
+    };
     utterance.onend = finish;
     utterance.onerror = finish;
     signal.addEventListener('abort', cancel);
