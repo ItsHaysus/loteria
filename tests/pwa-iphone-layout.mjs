@@ -10,11 +10,11 @@ const devices = [
   { name: 'iphone-18-pro', width: 402, height: 874, dpr: 3, safeTop: 62, safeBottom: 34 },
   { name: 'iphone-air', width: 420, height: 912, dpr: 3, safeTop: 62, safeBottom: 34 },
   { name: 'iphone-18-pro-max', width: 440, height: 956, dpr: 3, safeTop: 62, safeBottom: 34 },
-  { name: 'iphone-duo-outer', width: 466, height: 678, dpr: 3, safeTop: 20, safeBottom: 21, fold: 'fold-outer' },
-  { name: 'iphone-duo-inner-portrait', width: 626, height: 890, dpr: 3, safeTop: 24, safeBottom: 21, fold: 'fold-inner-portrait' },
+  { name: 'iphone-duo-outer', width: 466, height: 678, dpr: 3, safeTop: 20, safeBottom: 21 },
+  { name: 'iphone-duo-inner-portrait', width: 626, height: 890, dpr: 3, safeTop: 24, safeBottom: 21 },
   { name: 'iphone-18-pro-landscape', width: 874, height: 402, dpr: 3, safeTop: 0, safeBottom: 21, safeLeft: 62, safeRight: 62 },
   { name: 'iphone-18-pro-max-landscape', width: 956, height: 440, dpr: 3, safeTop: 0, safeBottom: 21, safeLeft: 62, safeRight: 62 },
-  { name: 'iphone-duo-inner-landscape', width: 890, height: 626, dpr: 3, safeTop: 24, safeBottom: 21, fold: 'fold-inner-landscape' },
+  { name: 'iphone-duo-inner-landscape', width: 890, height: 626, dpr: 3, safeTop: 24, safeBottom: 21 },
 ];
 
 async function request(path, init = {}) {
@@ -172,10 +172,13 @@ const context = tree.contexts[0].context;
 const outputDir = '/tmp/loteria-iphone-layouts';
 await Deno.mkdir(outputDir, { recursive: true });
 const results = [];
+let savedTheme = 'system';
 
 try {
   await verifyCallerPlayback();
-  for (const device of devices) {
+  for (const device of devices.flatMap(device =>
+    ['light', 'dark'].map(theme => ({ ...device, theme }))
+  )) {
     await bidi('browsingContext.setViewport', {
       context,
       viewport: { width: device.width, height: device.height },
@@ -187,10 +190,18 @@ try {
       if (ready) break;
       await sleep(100);
     }
+    const restoredTheme = await execute(`
+      const preference = document.getElementById('theme-select').value;
+      const expected = preference === 'system'
+        ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : preference;
+      return document.documentElement.dataset.theme === expected ? preference : null;
+    `);
+    if (restoredTheme !== savedTheme) throw new Error('The color theme did not survive navigation');
     await execute(`
-      document.documentElement.classList.add('pwa-standalone');
-      document.documentElement.classList.remove('fold-outer', 'fold-inner-portrait', 'fold-inner-landscape');
-      ${device.fold ? `document.documentElement.classList.add('${device.fold}');` : ''}
+      const theme = document.getElementById('theme-select');
+      theme.value = '${device.theme}';
+      theme.dispatchEvent(new Event('change'));
       document.documentElement.style.setProperty('--safe-top', '${device.safeTop || 0}px');
       document.documentElement.style.setProperty('--safe-bottom', '${device.safeBottom || 0}px');
       document.documentElement.style.setProperty('--safe-left', '${device.safeLeft || 0}px');
@@ -202,26 +213,24 @@ try {
       dealOne();
       document.getElementById('btn-start').click();
     `);
+    savedTheme = device.theme;
     await sleep(200);
-    await execute(`
-      document.documentElement.classList.add('pwa-standalone');
-      ${device.fold ? `document.documentElement.classList.add('${device.fold}');` : ''}
-    `);
     const metrics = await execute(`
       const visible = element => !element.hidden && getComputedStyle(element).display !== 'none';
       const rect = element => {
         const value = element.getBoundingClientRect();
         return { x: value.x, y: value.y, width: value.width, height: value.height, bottom: value.bottom, right: value.right };
       };
-      const buttons = [...document.querySelectorAll('.controls .btn')].filter(visible);
+      const buttons = [...document.querySelectorAll('.controls .btn, #theme-select')].filter(visible);
       const image = document.querySelector('#current-card img');
       return {
         viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio },
         document: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
-        classes: document.documentElement.className,
+        theme: document.documentElement.dataset.theme,
         currentCard: rect(document.getElementById('current-card')),
         cardImage: image ? rect(image) : null,
         dealt: rect(document.querySelector('.dealt-section')),
+        controls: rect(document.querySelector('.controls')),
         dealtCards: [...document.querySelectorAll('.dealt-strip .card-frame')].map(rect),
         buttons: buttons.map(button => ({ id: button.id, ...rect(button) })),
         smallTargets: buttons.filter(button => {
@@ -234,14 +243,18 @@ try {
       };
     `);
     const screenshot = await request(`/session/${sessionId}/screenshot`);
-    await Deno.writeFile(`${outputDir}/${device.name}.png`, Uint8Array.from(atob(screenshot), character => character.charCodeAt(0)));
+    await Deno.writeFile(`${outputDir}/${device.name}-${device.theme}.png`, Uint8Array.from(atob(screenshot), character => character.charCodeAt(0)));
     const overflow = metrics.document.width > device.width || metrics.document.height > device.height;
     const bounds = metrics.currentCard.bottom > device.height + 0.5 || metrics.dealt.bottom > device.height + 0.5;
-    const compactLandscape = device.width > device.height && device.height <= 520;
+    const landscape = device.width > device.height;
+    const compactLandscape = landscape && device.height <= 520;
     const cardFits = metrics.cardImage &&
       metrics.cardImage.y >= metrics.currentCard.y &&
       metrics.cardImage.bottom <= metrics.currentCard.bottom + 0.5;
-    const pass = !overflow && !bounds && metrics.smallTargets.length === 0 &&
+    const controlsFit = metrics.controls.bottom <= device.height + 0.5 &&
+      (landscape ? metrics.controls.x >= metrics.currentCard.right : metrics.controls.y >= metrics.dealt.bottom);
+    const pass = !overflow && !bounds && controlsFit && cardFits &&
+      metrics.theme === device.theme && metrics.smallTargets.length === 0 &&
       !metrics.aiVisible && metrics.imageLoaded && metrics.remaining.includes('52') &&
       (!compactLandscape || (cardFits && metrics.dealt.height <= 72)) &&
       (device.width > 440 || metrics.dealtCards.every(card => card.width < 100));

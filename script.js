@@ -19,9 +19,33 @@ const ASSET_PRELOAD_CONCURRENCY = 4;
 const UPCOMING_CARD_COUNT = 3;
 const INTRO_CALL = 'Corre y se va con';
 
-const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches
-  || window.navigator.standalone === true;
-document.documentElement.classList.toggle('pwa-standalone', isStandalonePwa);
+const THEME_STORAGE_KEY = 'loteria-theme';
+const colorPreference = window.matchMedia('(prefers-color-scheme: dark)');
+const themeSelect = document.getElementById('theme-select');
+const themeColor = document.querySelector('meta[name="theme-color"]');
+
+function applyTheme(){
+  const dark = themeSelect.value === 'dark' || (themeSelect.value === 'system' && colorPreference.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  themeColor.content = dark ? '#112a21' : '#f7edda';
+}
+
+try {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === 'light' || savedTheme === 'dark') themeSelect.value = savedTheme;
+} catch (error) {
+  console.warn('Could not load theme preference:', error);
+}
+themeSelect.addEventListener('change', () => {
+  applyTheme();
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, themeSelect.value);
+  } catch (error) {
+    console.warn('Could not save theme preference:', error);
+  }
+});
+colorPreference.addEventListener('change', applyTheme);
+applyTheme();
 
 // UI elements
 const btnStart   = document.getElementById('btn-start');
@@ -52,35 +76,6 @@ const remainingLabel = document.getElementById('remaining-label');
 const cardContent    = document.getElementById('card-content');
 const gameStatus     = document.getElementById('game-status');
 const dealtStrip     = document.getElementById('dealt-strip');
-
-function updateFoldLayout(){
-  const root = document.documentElement;
-  const screenWidth = Number(window.screen?.width) || 0;
-  const viewportWidth = Number(window.innerWidth) || 0;
-  const viewportHeight = Number(window.innerHeight) || 0;
-  const landscape = viewportWidth > viewportHeight;
-  // iOS standalone can report a 373px layout viewport while the foldable outer display is 457px wide.
-  // Use physical screen width to identify that device mode; its CSS is applied by the root class.
-  const outerDisplayWidth = Math.max(screenWidth, viewportWidth);
-  const isFoldOuter = !landscape && outerDisplayWidth >= 450 && outerDisplayWidth <= 500;
-  const width = viewportWidth;
-
-  root.classList.toggle('fold-outer', isFoldOuter);
-  root.classList.toggle(
-    'fold-inner-landscape',
-    landscape && width >= 800 && width <= 1100
-  );
-  root.classList.toggle(
-    'fold-inner-portrait',
-    !landscape && width >= 600 && width <= 680
-  );
-  resetDealtScroll();
-}
-
-window.addEventListener('resize', updateFoldLayout, { passive: true });
-window.addEventListener('orientationchange', updateFoldLayout, { passive: true });
-window.visualViewport?.addEventListener('resize', updateFoldLayout, { passive: true });
-updateFoldLayout();
 
 // State
 let fullDeck = [];     // array of image URLs
@@ -570,7 +565,7 @@ updateAiButton();
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (e.target.matches?.('input, select, textarea, [contenteditable]')) return;
   switch (e.key.toLowerCase()) {
     case 'r':
       e.preventDefault();
@@ -587,6 +582,7 @@ document.addEventListener('keydown', (e) => {
       btnSlower.click();
       break;
     case ' ':
+      if (e.target.tagName === 'BUTTON') return;
       e.preventDefault();
       btnStart.click();
       break;
