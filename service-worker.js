@@ -8,7 +8,7 @@ const pendingAssets = new Map();
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=1.5.1',
+  './styles.css?v=1.5.4',
   './script.js?v=1.5.2',
   './ai-clue.js?v=1.4.4',
   './manifest.webmanifest',

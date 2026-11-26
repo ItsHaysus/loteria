@@ -18,7 +18,7 @@ npx wrangler deploy
 
 ## Refresh an installed PWA
 
-The `v` query parameter on the service-worker URL in `index.html` is the PWA cache version. Increment it when publishing changed app assets, including card images or recorded calls. On the next online launch, the app checks for the new worker; it installs a new cache, removes the previous `card-dealer-*` cache on activation, reloads, and preloads the current deck. This refreshes downloaded assets without reinstalling the PWA. User preferences stored in local storage are preserved.
+The `pwa-version` meta value in `index.html` is the PWA cache version and appears in a small watermark at the bottom right. Increment it when publishing changed app assets, including card images or recorded calls. On the next online launch, the app checks for the new worker; it installs a new cache, removes the previous `card-dealer-*` cache on activation, reloads, and preloads the current deck. This refreshes downloaded assets without reinstalling the PWA. User preferences stored in local storage are preserved. This PWA cache version is separate from the Android app version in `package.json`.
 
 ## Build a sideloadable Android APK
 
