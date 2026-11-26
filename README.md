@@ -12,6 +12,7 @@ For a one-time manual deployment from a development machine with Node.js install
 
 ```sh
 npx wrangler login
+node tests/check-deck.mjs
 npx wrangler deploy
 ```
 

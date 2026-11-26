@@ -15,7 +15,8 @@ const AI_CLUES_AVAILABLE = window.LOTERIA_ENABLE_AI === true
 const AI_REQUEST_TIMEOUT_MS = 3500;
 const CLUE_DISPLAY_MS = 1800;
 const CALLER_START_TIMEOUT_MS = 5000;
-const AUDIO_PRELOAD_CONCURRENCY = 4;
+const ASSET_PRELOAD_CONCURRENCY = 4;
+const UPCOMING_CARD_COUNT = 3;
 const INTRO_CALL = 'Corre y se va con';
 
 const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches
@@ -34,7 +35,7 @@ const TEXT = {
   aiSource: 'Pista de IA', fallbackSource: 'Pista incluida',
   speed: 'Velocidad: {seconds}s / carta', remaining: 'Restantes: {count}',
   cardsPlaceholder: 'Las cartas aparecerán aquí', startPlaceholder: 'Presiona Iniciar para comenzar',
-  loading: 'Cargando el mazo...', loadingCount: 'Cargando {count} cartas...',
+  loading: 'Cargando el mazo...',
   deckError: 'Error al cargar la lista de cartas.', noCards: 'No se encontraron cartas.',
   copyCard: 'Carta actual', dealtCard: 'Carta repartida',
 };
@@ -49,9 +50,6 @@ const speedLabel     = document.getElementById('speed-label');
 const remainingLabel = document.getElementById('remaining-label');
 const currentCardEl  = document.getElementById('current-card');
 const dealtStrip     = document.getElementById('dealt-strip');
-const foldInnerLandscape = { get matches(){
-  return document.documentElement.classList.contains('fold-inner-landscape');
-} };
 
 function updateFoldLayout(){
   const root = document.documentElement;
@@ -74,7 +72,7 @@ function updateFoldLayout(){
     'fold-inner-portrait',
     !landscape && width >= 600 && width <= 680
   );
-  orderDealtCards();
+  resetDealtScroll();
 }
 
 window.addEventListener('resize', updateFoldLayout, { passive: true });
@@ -93,7 +91,7 @@ let nextDealAt = 0;
 let speechVoice = null;
 let audioPlayer = null;
 let callerController = null;
-const audioPreloadByUrl = new Map();
+const assetPreloads = new Map();
 let started = false;
 let cardMetadataByFile = new Map();
 let aiCluesEnabled = false;
@@ -225,39 +223,52 @@ function getAudioUrl(name){
   return `./audio/${encodeURIComponent(name)}.mp3`;
 }
 
-function preloadAudioUrl(url){
-  if (!audioPreloadByUrl.has(url)) {
-    const request = fetch(url, { cache: 'force-cache' })
-      .then(response => {
-        if (!response.ok) audioPreloadByUrl.delete(url);
-        return response.ok;
+function preloadAsset(url, priority = 'low'){
+  if (!assetPreloads.has(url)) {
+    const request = fetch(url, { cache: 'force-cache', priority })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await response.arrayBuffer();
       })
       .catch(error => {
-        audioPreloadByUrl.delete(url);
-        console.warn(`[audio] Could not preload ${url}:`, error);
-        return false;
+        assetPreloads.delete(url);
+        console.warn(`[assets] Could not preload ${url}:`, error);
       });
-    audioPreloadByUrl.set(url, request);
+    assetPreloads.set(url, request);
   }
-  return audioPreloadByUrl.get(url);
+  return assetPreloads.get(url);
 }
 
-async function preloadAudioLibrary(cardSources){
-  const names = ['start', ...cardSources.map(getCardNameFromSrc).filter(Boolean)];
-  const urls = names.map(getAudioUrl);
+function getCardAssets(card){
+  return [card, getAudioUrl(getCardNameFromSrc(card))];
+}
+
+function preloadUpcomingCards(){
+  for (const card of remaining.slice(0, UPCOMING_CARD_COUNT)) {
+    for (const url of getCardAssets(card)) void preloadAsset(url, 'high');
+  }
+}
+
+async function preloadDeck(){
+  const urls = fullDeck.flatMap(getCardAssets);
   let nextIndex = 0;
 
   async function worker(){
     while (nextIndex < urls.length) {
-      const url = urls[nextIndex++];
-      await preloadAudioUrl(url);
+      await preloadAsset(urls[nextIndex++]);
     }
   }
 
-  await Promise.all(Array.from(
-    { length: Math.min(AUDIO_PRELOAD_CONCURRENCY, urls.length) },
-    () => worker()
-  ));
+  await Promise.all(Array.from({ length: ASSET_PRELOAD_CONCURRENCY }, worker));
+}
+
+function shuffleDeck(){
+  const cards = [...fullDeck];
+  for (let i = cards.length - 1; i > 0; i -= 1) {
+    const index = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[index]] = [cards[index], cards[i]];
+  }
+  return cards;
 }
 
 function getCallerRate(){
@@ -374,19 +385,12 @@ function stopCaller(){
 
 // Add to dealt strip
 function appendDealt(src){
-  const frame = createCardFrame(src, t('dealtCard'), false);
-  frame.dataset.dealtIndex = String(dealt.length - 1);
-  dealtStrip.appendChild(frame);
-  orderDealtCards();
+  dealtStrip.prepend(createCardFrame(src, t('dealtCard')));
+  resetDealtScroll();
 }
 
-function orderDealtCards(){
-  const frames = Array.from(dealtStrip.children);
-  frames.sort((a, b) => Number(b.dataset.dealtIndex) - Number(a.dataset.dealtIndex));
-  dealtStrip.replaceChildren(...frames);
-  if (foldInnerLandscape.matches) {
-    dealtStrip.scrollTop = 0;
-  }
+function resetDealtScroll(){
+  dealtStrip.scrollTop = 0;
   dealtStrip.scrollLeft = 0;
 }
 
@@ -438,7 +442,7 @@ function beginGame(){
   if (started || fullDeck.length === 0) return;
 
   started = true;
-  remaining = [...fullDeck];
+  if (remaining.length !== fullDeck.length) remaining = shuffleDeck();
   dealt = [];
   showPlaceholder('cardsPlaceholder');
   dealtStrip.innerHTML = '';
@@ -446,14 +450,15 @@ function beginGame(){
   updatePlayButton();
   unlockVoiceForSafari();
   announce('start', INTRO_CALL);
+  preloadUpcomingCards();
   startDealDelay();
 }
 
 // Deal card
 function dealOne(){
   if (!started || paused || remaining.length === 0 || cluePending || callerController) return;
-  const idx = Math.floor(Math.random() * remaining.length);
-  const [card] = remaining.splice(idx, 1);
+  const card = remaining.shift();
+  preloadUpcomingCards();
   if (dealt.length > 0) {
     appendDealt(dealt[dealt.length - 1]);
   }
@@ -507,6 +512,7 @@ function restartGame(){
   stopTicker();
   stopCaller();
   cancelPendingClue();
+  remaining = shuffleDeck();
   started = false;
   paused = false;
   beginGame();
@@ -595,11 +601,10 @@ async function loadDeckList(){
     if (!res.ok) throw new Error(`HTTP ${res.status}: cards.json not found`);
     const files = await res.json();
     if (!Array.isArray(files)) throw new Error('cards.json must be an array');
-    return files.map(name => `./Cards/${name}`);
+    return files.map(name => `./Cards/${encodeURIComponent(name)}`);
   } catch (err) {
     console.error('[cards] Error loading deck list:', err);
-    showLoading('deckError');
-    return [];
+    return null;
   }
 }
 
@@ -623,41 +628,37 @@ async function loadCardMetadata(){
   }
 }
 
-// Verify images exist
-function filterExistingImages(urls){
-  showLoading('loadingCount', { count: urls.length });
-  return Promise.all(urls.map((src, idx) => new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve(src);
-    img.onerror = () => {
-      console.warn(`[cards] Failed to load: ${src}`);
-      resolve(null);
-    };
-    img.src = src + `?cb=${Date.now()}`;
-  }))).then(results => results.filter(Boolean));
-}
-
 // Init
 (async function init(){
   btnStart.disabled = true;
   btnRestart.disabled = true;
   loadPreferences();
-  await loadCardMetadata();
-  const cardSources = await loadDeckList();
-  fullDeck = await filterExistingImages(cardSources);
+  showLoading();
+  const cards = await loadDeckList();
+  if (!cards) {
+    showPlaceholder('deckError');
+    return;
+  }
+  fullDeck = cards;
 
   if (fullDeck.length === 0) {
     showPlaceholder('noCards');
     updateLabels();
     return;
   }
-  remaining = [...fullDeck];
-  void preloadAudioLibrary(fullDeck);
+  remaining = shuffleDeck();
+  // The service worker reloads the page on first activation. Warm its cache on that load.
+  if (!navigator.serviceWorker || navigator.serviceWorker.controller) {
+    void preloadAsset(getAudioUrl('start'), 'high');
+    preloadUpcomingCards();
+    void preloadDeck();
+  }
   dealt = [];
   updateLabels();
   showPlaceholder('startPlaceholder');
   dealtStrip.innerHTML = '';
   btnStart.disabled = false;
   btnRestart.disabled = false;
+  await loadCardMetadata();
   updateAiButton();
 })();
