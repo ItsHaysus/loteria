@@ -1,13 +1,13 @@
 // Simple PWA service worker for app shell + runtime caching of /Cards/*
 // Works on HTTPS static hosting, including Cloudflare Workers.
 
-const CACHE_NAME = 'card-dealer-v29';
+const CACHE_NAME = 'card-dealer-v30';
 const pendingAssets = new Map();
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=1.4.9',
-  './script.js?v=1.4.9',
+  './styles.css?v=1.5.0',
+  './script.js?v=1.5.0',
   './ai-clue.js?v=1.4.4',
   './manifest.webmanifest',
   './icons/loteria-icon.svg',
