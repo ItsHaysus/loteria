@@ -37,7 +37,7 @@ The installable debug APK is created at `android/app/build/outputs/apk/debug/app
 
 ### Automated signed releases
 
-`package.json` is the source of the app's `versionName`; it is currently `1.5.1`. GitHub Actions builds debug APK artifacts for pull requests to `master` and pushes to `master`. A signed release requires a matching `v`-prefixed tag, so the first release should use `v1.5.1`. The workflow checks the tag against `package.json`, and uses the increasing Actions workflow run number for Android's `versionCode`. For the next release, bump the package version and create a tag with the same version.
+`package.json` is the source of the app's `versionName`; it is currently `1.5.2`. GitHub Actions builds debug APK artifacts for pull requests to `master` and pushes to `master`. A signed release requires a matching `v`-prefixed tag, so this release uses `v1.5.2`. The workflow checks the tag against `package.json`, and uses the increasing Actions workflow run number for Android's `versionCode`. For the next release, bump the package version and create a tag with the same version.
 
 Before creating a release tag, add these repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Generate one keystore and retain a secure backup; every update must use the same keystore or Android will reject it as an update. Never commit the keystore or its passwords.
 

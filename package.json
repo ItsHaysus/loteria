@@ -1,6 +1,6 @@
 {
   "name": "loteria-android",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "scripts": {
     "android:prepare": "node scripts/prepare-android-web.mjs",
