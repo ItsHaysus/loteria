@@ -1,7 +1,8 @@
 apply plugin: 'com.android.application'
 
 def androidVersionCode = providers.gradleProperty('androidVersionCode').getOrElse('1').toInteger()
-def androidVersionName = providers.gradleProperty('androidVersionName').getOrElse('1.0')
+def appVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json')).version
+def androidVersionName = providers.gradleProperty('androidVersionName').getOrElse(appVersion)
 def releaseSigningProperties = [
     storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
     storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),

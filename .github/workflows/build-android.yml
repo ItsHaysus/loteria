@@ -73,7 +73,7 @@ jobs:
 
       - run: npm run android:sync
 
-      - name: Validate release tag and signing secrets
+      - name: Validate release version and signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -82,6 +82,12 @@ jobs:
         run: |
           if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tags must use vMAJOR.MINOR.PATCH, for example v1.2.3."
+            exit 1
+          fi
+          app_version="$(node -p "require('./package.json').version")"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ "$tag_version" != "$app_version" ]]; then
+            echo "::error::Release tag must match package.json version ($app_version); got $GITHUB_REF_NAME."
             exit 1
           fi
           if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
