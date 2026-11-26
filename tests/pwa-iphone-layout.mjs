@@ -120,6 +120,15 @@ async function verifyCallerPlayback() {
   if (introRates.originalRate !== 1.3 || introRates.fasterRate !== 1.4 || !introRates.preservesPitch) {
     throw new Error(`Unexpected opener playback rates ${JSON.stringify(introRates)}`);
   }
+  // Simulate an OS audio interruption while the opener is still playing.
+  await execute(`
+    window.interruptedAt = audioPlayer.currentTime;
+    audioPlayer.pause();
+  `);
+  await waitFor(
+    'remaining.length === 54 && !audioPlayer.paused && audioPlayer.currentTime > interruptedAt',
+    'The interrupted opener did not resume before the first deal',
+  );
   await sleep(1100);
   if (await execute('return remaining.length') !== 54) throw new Error('A card was dealt during the opener');
   await execute('audioPlayer.playbackRate = 2');
@@ -151,8 +160,23 @@ async function verifyCallerPlayback() {
     "remaining.length === 54 && audioPlayer.currentSrc.endsWith('/audio/start.mp3') && audioPlayer.currentTime > 0",
     'Restart did not start a new round with the opener',
   );
-  await waitFor('remaining.length === 53', 'Restart did not resume dealing');
   await execute(`
+    window.fallbackCall = null;
+    speakCall = async text => { window.fallbackCall = text; };
+    audioPlayer.play = function () {
+      if (this.src.endsWith('/audio/start.mp3')) {
+        return Promise.reject(new DOMException('Interrupted', 'NotAllowedError'));
+      }
+      return HTMLMediaElement.prototype.play.call(this);
+    };
+    audioPlayer.pause();
+  `);
+  await waitFor('remaining.length === 53', 'Restart did not resume dealing');
+  if (!await execute("return fallbackCall === 'Corre y se va con'")) {
+    throw new Error('The interrupted opener did not use speech when playback could not resume');
+  }
+  await execute(`
+    delete audioPlayer.play;
     stopCaller();
     remaining.splice(1);
     dealOne();
@@ -163,6 +187,23 @@ async function verifyCallerPlayback() {
   if (!await execute("return lastCard && lastCard === document.querySelector('#current-card img')")) {
     throw new Error('Finishing the deck replaced the last card');
   }
+  await execute(`
+    window.fallbackCall = null;
+    document.getElementById('btn-start').click();
+  `);
+  await waitFor(
+    "audioPlayer.currentSrc.endsWith('/audio/start.mp3') && audioPlayer.currentTime > 0",
+    'The opener did not start before the silent stall test',
+  );
+  await execute(`
+    audioPlayer.addEventListener('pause', event => event.stopImmediatePropagation(), { capture: true, once: true });
+    audioPlayer.pause();
+  `);
+  await sleep(5000);
+  await waitFor(
+    "fallbackCall === 'Corre y se va con' && remaining.length < 54",
+    'The dealer stayed blocked after playback silently stopped',
+  );
   await execute("localStorage.removeItem('loteria-preferences'); localStorage.removeItem('loteria-language')");
   console.log('Caller playback passed');
 }
