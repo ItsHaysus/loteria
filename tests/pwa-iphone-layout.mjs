@@ -132,7 +132,13 @@ async function verifyCallerPlayback() {
   if (await execute('return remaining.length') !== 53) throw new Error('A card was dealt over the previous call');
   await execute('audioPlayer.playbackRate = 2');
   await waitFor('remaining.length === 52', 'Dealing did not resume after the card call ended');
-  await execute("document.getElementById('btn-restart').click(); localStorage.removeItem('loteria-preferences')");
+  await execute("document.getElementById('btn-restart').click()");
+  await waitFor(
+    "remaining.length === 54 && audioPlayer.currentSrc.endsWith('/audio/start.mp3') && audioPlayer.currentTime > 0",
+    'Restart did not replay the opener',
+  );
+  await waitFor('remaining.length === 53', 'Dealing did not resume after the restarted opener');
+  await execute("localStorage.removeItem('loteria-preferences')");
   console.log('Caller playback passed');
 }
 
