@@ -556,7 +556,8 @@ function dealOne(){
 }
 
 // Reset game
-function resetGame(){
+function restartGame(){
+  if (fullDeck.length === 0) return;
   started = false;
   stopTicker();
   stopCaller();
@@ -565,11 +566,7 @@ function resetGame(){
   btnPause.textContent = t('pause');
   btnPause.setAttribute('aria-pressed', false);
 
-  remaining = [...fullDeck];
-  dealt = [];
-  showPlaceholder('startPlaceholder');
-  dealtStrip.innerHTML = '';
-  updateLabels();
+  beginGame();
 }
 
 // Controls
@@ -577,7 +574,7 @@ btnStart.addEventListener('click', () => {
   beginGame();
 });
 
-btnRestart.addEventListener('click', resetGame);
+btnRestart.addEventListener('click', restartGame);
 
 btnFaster.addEventListener('click', () => {
   delayMs = Math.max(MIN_DELAY_MS, delayMs - 1000);
@@ -643,7 +640,7 @@ document.addEventListener('keydown', (e) => {
   switch (e.key.toLowerCase()) {
     case 'r':
       e.preventDefault();
-      resetGame();
+      restartGame();
       break;
     case '<':
     case ',':
